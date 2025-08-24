@@ -26,6 +26,31 @@ This project provides a Tkinter-based GUI for generating randomized Y-maze sched
 4. Click **Generate** to produce the schedules.
 5. Copy results to the clipboard or use the export buttons for CSV or Excel files.
 
+## Example Input
+
+An example input sheet is available at [`examples/example_input.csv`](examples/example_input.csv),
+which demonstrates the expected column layout:
+
+```
+AnimalID,Tag,Sex,Genotype,Cage
+A1,101,M,IL-17 KO,Cage1
+A2,102,F,IL-17 KO,Cage1
+A3,201,M,C57Bl/6J,Cage2
+A4,202,F,C57Bl/6J,Cage2
+```
+
+For illustration, a generated day-1 schedule for these animals might look like:
+
+```
+AnimalID,Day1ExitArm
+A1,1
+A2,2
+A3,3
+A4,1
+```
+
+Actual schedules may vary depending on the random seed and parameter choices.
+
 ## Notes
 - Exit arm assignments are deterministic for a given random seed; leave the seed blank for a fresh randomization each run.
 - Excel export requires `openpyxl`; a warning is shown if the library is missing.
