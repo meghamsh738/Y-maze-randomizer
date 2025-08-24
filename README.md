@@ -1,33 +1,34 @@
 # Y-maze Randomizer
 
-Y-maze Randomizer is an early-stage Python project that aims to generate randomized sequences of left and right turns for Y-maze behavioral experiments.
+This project provides a Tkinter-based GUI for generating randomized Y-maze schedules. It balances exit arm assignments across animals and produces per-day tables that minimize color switches between trials.
 
-## Example
+## Features
+- Balanced exit-arm assignment within genotype, sex, and cage groups, while keeping global counts for arms 1–3 as even as possible.
+- Dynamic programming to build trial schedules that avoid the learning-day exit arm for each animal and minimize arm switching.
+- Paste or type animal data directly into the interface; robust parser expects rows of `AnimalID Tag Sex Genotype Cage`.
+- Export generated schedules as separate CSV files, a combined CSV, or an Excel workbook with one sheet per day.
 
-The snippet below demonstrates generating a random sequence in pure Python.
+## Requirements
+- Python 3 with Tkinter (included with most Python distributions).
+- Optional: `openpyxl` for Excel export (`pip install openpyxl`).
 
-```python
-import random
+## Usage
+1. Run the application:
+   ```bash
+   python code.py
+   ```
+2. Enter animal information into the text box. Each line should contain:
+   ```
+   AnimalID Tag Sex Genotype Cage
+   ```
+   The parser uses the `Sex` token to separate fields, so tags and genotypes may contain spaces.
+3. Specify the number of learning days, reversal days, and trials per day.
+4. Click **Generate** to produce the schedules.
+5. Copy results to the clipboard or use the export buttons for CSV or Excel files.
 
-def random_sequence(length: int) -> str:
-    return ''.join(random.choice("LR") for _ in range(length))
-
-if __name__ == "__main__":
-    print(random_sequence(10))
-```
-
-Running the script prints a string such as `LRRLLRLRRL`.
+## Notes
+- Exit arm assignments are deterministic for a given random seed; leave the seed blank for a fresh randomization each run.
+- Excel export requires `openpyxl`; a warning is shown if the library is missing.
 
 ## Contributing
-
-This repository currently contains documentation only. To contribute code or proposed features:
-
-1. Fork the repository.
-2. Create a descriptive feature branch.
-3. Commit your changes with clear messages.
-4. Open a pull request for review.
-
-## Project status
-
-The project is in its initial stages and welcomes community input on desired features and design.
-
+Pull requests are welcome! Please open an issue to discuss major changes before submitting.
