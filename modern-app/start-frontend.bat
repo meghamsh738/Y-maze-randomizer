@@ -1,0 +1,3 @@
+@echo off
+echo Starting Y-Maze Randomizer Frontend...
+npm run dev
