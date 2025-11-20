@@ -1,43 +1,48 @@
-# Y-Maze Randomizer - Modern Application
+# Y-Maze Randomizer (React + FastAPI)
 
-## Features
-- Modern, responsive UI built with React + TypeScript + Tailwind CSS
-- FastAPI backend with optimized Y-maze scheduling algorithms
-- Balanced exit arm assignment
-- Pseudorandom sequence generation (no triple repeats)
-- Dynamic programming for cage optimization
-- Excel export functionality
+Modern web UI for generating balanced Y-maze schedules. Paste animals or flip on **Use Example Data**, tweak days/trials, then export CSV/Excel. Bundled Playwright E2E verifies the flow and saves a screenshot.
 
-## Running the Application
+## Project structure
+- `src/` – React UI (Vite + TypeScript + Tailwind).
+- `backend/` – FastAPI API with scheduling logic.
+- `example_data/animals.csv` – Built-in dataset for example mode.
+- `tests/` – Playwright E2E covering the example flow.
+- `screenshots/example_run.png` – Produced by the E2E as evidence.
+- Preview: open `screenshots/example_run.png` after running the E2E.
 
-### Backend (FastAPI)
+## Prerequisites
+- Node 18+ and npm
+- Python 3.10+
+
+## Setup
 ```bash
-cd backend
-python -m venv venv
-venv\Scripts\activate  # Windows
-pip install -r requirements.txt
-python main.py
+npm install
+pip install -r backend/requirements.txt
 ```
 
-The backend will run on `http://localhost:8000`
-
-### Frontend (React)
+## Run (dev)
 ```bash
-cd modern-app
-npm install  # If not already installed
-npm run dev
+# API on :8000
+npm run dev:back
+# Frontend on :5175
+npm run dev:front
 ```
+Open http://localhost:5175, check **Use Example Data**, and click **Generate Schedule**.
 
-The frontend will run on `http://localhost:5173`
+## Tests & screenshot
+```bash
+npx playwright install --with-deps chromium
+npm run test:e2e
+```
+This starts both servers, drives the example flow, and writes `screenshots/example_run.png`.
 
-## Usage
+## API highlights
+- `POST /generate-schedule` – animals[], learning_days, reversal_days, trials_per_day, seed?, use_example?
+- `POST /export-excel` – same body, returns Excel workbook
+- `POST /upload`
+- `GET /health`
 
-1. Start the backend server first
-2. Start the frontend development server
-3. Open `http://localhost:5173` in your browser
-4. Paste animal data (tab-separated or space-separated format)
-5. Configure learning days, reversal days, and trials per day
-6. Click "Generate Schedule" to view the results
+All endpoints honor `use_example: true` to operate on `example_data/animals.csv`, so the app runs even without user-provided data.
 7. Click "Export to Excel" to download the schedule
 
 ## Input Format
