@@ -8,6 +8,12 @@ This project provides a Tkinter-based GUI for generating randomized Y-maze sched
 - Paste or type animal data directly into the interface; robust parser expects rows of `AnimalID Tag Sex Genotype Cage`.
 - Export generated schedules as separate CSV files, a combined CSV, or an Excel workbook with one sheet per day.
 
+## Screenshot
+
+Example run using the built-in sample dataset and default parameters in the modern web app:
+
+![Y-maze scheduler app screenshot](modern-app/screenshots/example_run.png)
+
 ## Requirements
 - Python 3 with Tkinter (included with most Python distributions).
 - Optional: `openpyxl` for Excel export (`pip install openpyxl`).
