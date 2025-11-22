@@ -1,39 +1,27 @@
 # Y-maze Randomizer
 
-This project provides a Tkinter-based GUI for generating randomized Y-maze schedules. It balances exit arm assignments across animals and produces per-day tables that minimize color switches between trials.
+This repo now hosts two implementations of the same scheduler logic:
+- **Modern web app (preferred):** React + FastAPI under `modern-app/`. Playwright E2E drives the example flow and regenerates the screenshot.
+- **Legacy Tkinter GUI (archived):** the original desktop app in the repo root, kept for reference.
 
-## Features
+## Features (shared logic)
 - Balanced exit-arm assignment within genotype, sex, and cage groups, while keeping global counts for arms 1–3 as even as possible.
 - Dynamic programming to build trial schedules that avoid the learning-day exit arm for each animal and minimize arm switching.
-- Paste or type animal data directly into the interface; robust parser expects rows of `AnimalID Tag Sex Genotype Cage`.
-- Export generated schedules as separate CSV files, a combined CSV, or an Excel workbook with one sheet per day.
+- Paste or type animal data directly; parser expects rows of `AnimalID Tag Sex Genotype Cage`.
+- Export schedules as CSV (per-day or combined) or Excel with one sheet per day.
 
-## Screenshot
+## Modern web app (preferred)
+- See `modern-app/README.md` for setup and dev commands.
+- Example run (Playwright E2E with bundled data): ![Y-maze scheduler app screenshot](modern-app/screenshots/example_run.png)
+- Latest verification: `npm run test:e2e` (starts Vite front-end on :5175 and FastAPI back-end on :8000, drives the example flow, regenerates the screenshot above).
 
-Example run using the built-in sample dataset and default parameters in the modern web app:
-
-![Y-maze scheduler app screenshot](modern-app/screenshots/example_run.png)
-
-Recent verification (Playwright E2E):
-- `npm run test:e2e` (spins up Vite front-end on :5175 and FastAPI back-end on :8000, drives the example flow, regenerates the screenshot above).
-
-## Requirements
-- Python 3 with Tkinter (included with most Python distributions).
-- Optional: `openpyxl` for Excel export (`pip install openpyxl`).
-
-## Usage
-1. Run the application:
-   ```bash
-   python code.py
-   ```
-2. Enter animal information into the text box. Each line should contain:
-   ```
-   AnimalID Tag Sex Genotype Cage
-   ```
-   The parser uses the `Sex` token to separate fields, so tags and genotypes may contain spaces.
-3. Specify the number of learning days, reversal days, and trials per day.
-4. Click **Generate** to produce the schedules.
-5. Copy results to the clipboard or use the export buttons for CSV or Excel files.
+## Legacy Tkinter GUI (archived)
+- Requirements: Python 3 with Tkinter (bundled in most installs); `openpyxl` for Excel export (`pip install openpyxl`).
+- Run:
+  ```bash
+  python code.py
+  ```
+- Enter animal rows in the text box (`AnimalID Tag Sex Genotype Cage`), set learning/reversal days and trials, then click **Generate**. Copy output or export CSV/Excel as needed.
 
 ## Example Input
 
