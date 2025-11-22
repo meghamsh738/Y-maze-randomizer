@@ -14,6 +14,9 @@ Example run using the built-in sample dataset and default parameters in the mode
 
 ![Y-maze scheduler app screenshot](modern-app/screenshots/example_run.png)
 
+Recent verification (Playwright E2E):
+- `npm run test:e2e` (spins up Vite front-end on :5175 and FastAPI back-end on :8000, drives the example flow, regenerates the screenshot above).
+
 ## Requirements
 - Python 3 with Tkinter (included with most Python distributions).
 - Optional: `openpyxl` for Excel export (`pip install openpyxl`).
