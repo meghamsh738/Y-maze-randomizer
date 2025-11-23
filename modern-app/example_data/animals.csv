@@ -1,0 +1,7 @@
+AnimalID,Tag,Sex,Genotype,Cage
+A1,101,M,IL-17 KO,Cage1
+A2,102,F,IL-17 KO,Cage1
+A3,201,M,C57Bl/6J,Cage2
+A4,202,F,C57Bl/6J,Cage2
+A5,301,M,WT,Cage3
+A6,302,F,WT,Cage3
