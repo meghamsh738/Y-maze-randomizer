@@ -23,7 +23,8 @@ interface ScheduleData {
 }
 
 const EXAMPLE_DATA = exampleAnimals.trim()
-const API_BASE = import.meta.env.VITE_API_URL || ''
+// Default to local FastAPI dev server when env var is missing (common in Playwright runs)
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 function App() {
   const [animalText, setAnimalText] = useState('')
