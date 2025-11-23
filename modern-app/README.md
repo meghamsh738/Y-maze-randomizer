@@ -10,6 +10,11 @@ Modern web UI for generating balanced Y-maze schedules. Paste animals or flip on
 - `screenshots/example_run.png` – Produced by the E2E as evidence.
 - Preview: open `screenshots/example_run.png` after running the E2E.
 
+## Screenshot
+| Example run (Use Example Data) |
+| --- |
+| ![Example schedule generation](screenshots/example_run.png) |
+
 ## Prerequisites
 - Node 18+ and npm
 - Python 3.10+
