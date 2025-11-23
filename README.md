@@ -1,8 +1,6 @@
 # Y-maze Randomizer
 
-This repo now hosts two implementations of the same scheduler logic:
-- **Modern web app (preferred):** React + FastAPI under `modern-app/`. Playwright E2E drives the example flow and regenerates the screenshot.
-- **Legacy Tkinter GUI (archived):** the original desktop app in the repo root, kept for reference.
+Modern React + FastAPI app under `modern-app/`. Legacy Tkinter GUI is documented separately in `LEGACY.md`.
 
 ## Features (shared logic)
 - Balanced exit-arm assignment within genotype, sex, and cage groups, while keeping global counts for arms 1–3 as even as possible.
