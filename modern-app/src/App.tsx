@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import exampleAnimals from '../example_data/animals.csv?raw'
 
 interface AnimalInput {
   AnimalID: string
@@ -21,11 +22,15 @@ interface ScheduleData {
   day_tables: DayTable[]
 }
 
+const EXAMPLE_DATA = exampleAnimals.trim()
+const API_BASE = import.meta.env.VITE_API_URL || ''
+
 function App() {
   const [animalText, setAnimalText] = useState('')
   const [learningDays, setLearningDays] = useState(3)
   const [reversalDays, setReversalDays] = useState(2)
   const [trialsPerDay, setTrialsPerDay] = useState(10)
+  const [useExampleData, setUseExampleData] = useState(false)
   const [useSeed, setUseSeed] = useState(false)
   const [seed, setSeed] = useState(42)
   const [loading, setLoading] = useState(false)
@@ -33,35 +38,56 @@ function App() {
   const [scheduleData, setScheduleData] = useState<ScheduleData | null>(null)
   const [selectedDay, setSelectedDay] = useState(0)
 
-  const parseAnimals = (text: string): AnimalInput[] => {
+  useEffect(() => {
+    if (useExampleData) {
+      setAnimalText(EXAMPLE_DATA)
+    }
+  }, [useExampleData])
+
+  const parseAnimals = (text: string): { animals: AnimalInput[]; errors: string[] } => {
     const lines = text.trim().split('\n').filter(l => l.trim())
     const animals: AnimalInput[] = []
+    const errors: string[] = []
 
-    for (const line of lines) {
-      if (line.includes('AnimalID') && line.includes('Sex')) continue
+    lines.forEach((line, idx) => {
+      if (line.toLowerCase().includes('animalid') && line.toLowerCase().includes('sex')) return
 
-      const parts = line.includes('\t')
-        ? line.split('\t').map(p => p.trim()).filter(p => p)
-        : line.split(/\s{2,}/).map(p => p.trim()).filter(p => p)
+      const parts = line
+        .split(/[\s,\t]+/)
+        .map(p => p.trim())
+        .filter(p => p)
 
-      if (parts.length >= 5) {
-        animals.push({
-          AnimalID: parts[0],
-          Tag: parts[1],
-          Sex: parts[2],
-          Genotype: parts[3],
-          Cage: parts[parts.length - 1]
-        })
+      if (parts.length < 5) {
+        errors.push(`Line ${idx + 1}: expected 5 fields (AnimalID Tag Sex Genotype Cage)`) 
+        return
       }
-    }
 
-    return animals
+      animals.push({
+        AnimalID: parts[0],
+        Tag: parts[1],
+        Sex: parts[2],
+        Genotype: parts[3],
+        Cage: parts[parts.length - 1]
+      })
+    })
+
+    return { animals, errors }
   }
 
   const handleGenerate = async () => {
-    const animals = parseAnimals(animalText)
+    const sourceText = useExampleData ? EXAMPLE_DATA : animalText
+    const { animals, errors } = parseAnimals(sourceText)
     if (animals.length === 0) {
-      setError('Please paste animal data first')
+      setError(errors[0] || 'Please paste animal data first')
+      return
+    }
+    if (errors.length) {
+      setError(errors.join('\n'))
+      return
+    }
+
+    if (learningDays <= 0 || reversalDays < 0 || trialsPerDay <= 0) {
+      setError('Learning days and trials must be > 0; reversal days must be ≥ 0.')
       return
     }
 
@@ -74,16 +100,20 @@ function App() {
         learning_days: learningDays,
         reversal_days: reversalDays,
         trials_per_day: trialsPerDay,
-        seed: useSeed ? seed : null
+        seed: useSeed ? seed : null,
+        use_example: useExampleData
       }
 
-      const response = await fetch('http://localhost:8000/generate-schedule', {
+      const response = await fetch(`${API_BASE}/generate-schedule`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request)
       })
 
-      if (!response.ok) throw new Error('Failed to generate schedule')
+      if (!response.ok) {
+        const msg = await response.text()
+        throw new Error(msg || 'Failed to generate schedule')
+      }
 
       const data = await response.json()
       setScheduleData(data)
@@ -122,9 +152,18 @@ function App() {
   }
 
   const handleExportExcel = async () => {
-    const animals = parseAnimals(animalText)
+    const sourceText = useExampleData ? EXAMPLE_DATA : animalText
+    const { animals, errors } = parseAnimals(sourceText)
     if (animals.length === 0) {
-      setError('Please paste animal data first')
+      setError(errors[0] || 'Please paste animal data first')
+      return
+    }
+    if (errors.length) {
+      setError(errors.join('\n'))
+      return
+    }
+    if (learningDays <= 0 || reversalDays < 0 || trialsPerDay <= 0) {
+      setError('Learning days and trials must be > 0; reversal days must be ≥ 0.')
       return
     }
 
@@ -134,16 +173,20 @@ function App() {
         learning_days: learningDays,
         reversal_days: reversalDays,
         trials_per_day: trialsPerDay,
-        seed: useSeed ? seed : null
+        seed: useSeed ? seed : null,
+        use_example: useExampleData
       }
 
-      const response = await fetch('http://localhost:8000/export-excel', {
+      const response = await fetch(`${API_BASE}/export-excel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request)
       })
 
-      if (!response.ok) throw new Error('Failed to export schedule')
+      if (!response.ok) {
+        const msg = await response.text()
+        throw new Error(msg || 'Failed to export schedule')
+      }
 
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
@@ -234,17 +277,44 @@ function App() {
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Input Parameters</h2>
 
             <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Animal Data
-              </label>
-              <p className="text-xs text-gray-500 mb-2">
-                Paste tab- or space-separated data: AnimalID | Tag | Sex | Genotype | ... | Cage (last)
-              </p>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Animal Data
+                  </label>
+                  <p className="text-xs text-gray-500">
+                    Paste tab- or space-separated data: AnimalID | Tag | Sex | Genotype | ... | Cage (last)
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-3 items-center">
+                  <label className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
+                    <input
+                      type="checkbox"
+                      className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                      checked={useExampleData}
+                      onChange={(e) => setUseExampleData(e.target.checked)}
+                    />
+                    Use Example Data
+                  </label>
+                  <button
+                    onClick={() => {
+                      setUseExampleData(true)
+                      setAnimalText(EXAMPLE_DATA)
+                    }}
+                    className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1 rounded transition-colors"
+                  >
+                    Reload Sample
+                  </button>
+                </div>
+              </div>
               <textarea
                 className="w-full h-48 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-sm resize-none"
                 placeholder="Paste animal data here..."
-                value={animalText}
-                onChange={(e) => setAnimalText(e.target.value)}
+                value={useExampleData ? EXAMPLE_DATA : animalText}
+                onChange={(e) => {
+                  setUseExampleData(false)
+                  setAnimalText(e.target.value)
+                }}
               />
             </div>
 
@@ -313,6 +383,7 @@ function App() {
               <button
                 onClick={handleGenerate}
                 disabled={loading}
+                data-testid="generate-btn"
                 className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-3 px-6 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Generating...' : 'Generate Schedule'}

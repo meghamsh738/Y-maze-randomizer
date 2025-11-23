@@ -4,15 +4,17 @@ Extracted from the original Tkinter application.
 Handles all the core scheduling logic.
 """
 
-import random
 import io
-import pandas as pd
+import random
 from collections import defaultdict, OrderedDict, Counter
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.responses import StreamingResponse
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pathlib import Path
 from typing import List, Dict, Any, Optional
+
+import pandas as pd
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 
 
 app = FastAPI(title="Y-Maze Randomizer API")
@@ -20,7 +22,11 @@ app = FastAPI(title="Y-Maze Randomizer API")
 # CORS middleware to allow frontend communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite dev server
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+    ],  # Vite dev servers
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,13 +45,31 @@ class AnimalInput(BaseModel):
 
 class ScheduleRequest(BaseModel):
     animals: List[AnimalInput]
-    learning_days: int
-    reversal_days: int
-    trials_per_day: int
+    learning_days: int = Field(..., gt=0)
+    reversal_days: int = Field(..., ge=0)
+    trials_per_day: int = Field(..., gt=0)
     seed: Optional[int] = None
+    use_example: bool = False
 
 
 # ==================== CORE LOGIC ====================
+ROOT_DIR = Path(__file__).resolve().parent.parent
+EXAMPLE_ANIMALS_PATH = ROOT_DIR / "example_data" / "animals.csv"
+
+
+def load_example_animals() -> List[Dict[str, Any]]:
+    """Load bundled example animals as dictionaries."""
+    if not EXAMPLE_ANIMALS_PATH.exists():
+        raise FileNotFoundError(f"Missing example dataset at {EXAMPLE_ANIMALS_PATH}")
+    df = pd.read_csv(EXAMPLE_ANIMALS_PATH)
+    return df.rename(columns={
+        "AnimalID": "AnimalID",
+        "Tag": "Tag",
+        "Sex": "Sex",
+        "Genotype": "Genotype",
+        "Cage": "Cage"
+    }).to_dict('records')
+
 
 def assign_balanced_exit_arms(animal_data: List[Dict]) -> Dict[str, int]:
     """
@@ -295,12 +319,21 @@ async def generate_schedule(request: ScheduleRequest):
     Generate Y-maze schedule based on input parameters.
     """
     try:
-        # Set random seed if provided
+        # Seed for reproducibility when provided
         if request.seed is not None:
             random.seed(request.seed)
 
-        # Convert Pydantic models to dicts
-        animal_data = [animal.dict() for animal in request.animals]
+        # Convert Pydantic models to dicts or load example data
+        if request.use_example or not request.animals:
+            try:
+                animal_data = load_example_animals()
+            except FileNotFoundError as e:
+                raise HTTPException(status_code=400, detail=str(e))
+        else:
+            animal_data = [animal.dict() for animal in request.animals]
+
+        if not animal_data:
+            raise HTTPException(status_code=400, detail="No animals provided.")
 
         # Generate balanced exit arms
         exit_arm_map = assign_balanced_exit_arms(animal_data)
@@ -320,6 +353,8 @@ async def generate_schedule(request: ScheduleRequest):
             "day_tables": day_tables
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -333,7 +368,17 @@ async def export_excel(request: ScheduleRequest):
         if request.seed is not None:
             random.seed(request.seed)
 
-        animal_data = [animal.dict() for animal in request.animals]
+        if request.use_example or not request.animals:
+            try:
+                animal_data = load_example_animals()
+            except FileNotFoundError as e:
+                raise HTTPException(status_code=400, detail=str(e))
+        else:
+            animal_data = [animal.dict() for animal in request.animals]
+
+        if not animal_data:
+            raise HTTPException(status_code=400, detail="No animals provided.")
+
         exit_arm_map = assign_balanced_exit_arms(animal_data)
         day_tables = generate_day_tables(
             animal_data,
@@ -359,6 +404,8 @@ async def export_excel(request: ScheduleRequest):
             headers={"Content-Disposition": "attachment; filename=ymaze_schedule.xlsx"}
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
