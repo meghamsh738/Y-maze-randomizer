@@ -34,6 +34,12 @@ npm run dev:front
 ```
 Open http://localhost:5175, check **Use Example Data**, and click **Generate Schedule**.
 
+## Data format & quick AI helper
+- Required columns (CSV/XLSX): `AnimalID, Tag, Sex, Genotype, Cage` (see `example_data/animals.csv`).
+- Need to reshape first? Use: [ChatGPT](https://chat.openai.com/), [Gemini](https://gemini.google.com/app), [Grok](https://grok.com/).
+- Prompt: "Convert my table to CSV with headers: AnimalID, Tag, Sex, Genotype, Cage. Keep data unchanged, no new rows, output UTF-8 CSV text only."
+- Save as `animals.csv`, then upload or paste. See `screenshots/data-format-helper.svg` for a one-screen guide.
+
 ## Tests & screenshot
 ```bash
 npx playwright install --with-deps chromium
