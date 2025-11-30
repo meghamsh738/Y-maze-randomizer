@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ScheduleRequest, AnimalInput } from '../types'
+import type { ScheduleRequest, AnimalInput } from '../types'
 
 interface Props {
     onGenerate: (request: ScheduleRequest) => void
