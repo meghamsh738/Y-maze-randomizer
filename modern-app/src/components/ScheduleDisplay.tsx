@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ScheduleData } from '../types'
+import type { ScheduleData } from '../types'
 
 interface Props {
     data: ScheduleData
