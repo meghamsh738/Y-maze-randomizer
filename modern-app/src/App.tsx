@@ -317,6 +317,20 @@ function App() {
                   setAnimalText(e.target.value)
                 }}
               />
+              <div className="mt-3 p-4 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-900 space-y-2">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <p className="text-xs font-semibold">Need to reformat your sheet?</p>
+                    <p className="text-xs">Send this prompt to ChatGPT, Gemini, or Grok; paste the returned CSV/TSV here.</p>
+                  </div>
+                  <div className="flex gap-2 text-xs font-semibold underline">
+                    <a href="https://chat.openai.com/" target="_blank" rel="noreferrer" className="text-indigo-800">ChatGPT</a>
+                    <a href="https://gemini.google.com/app" target="_blank" rel="noreferrer" className="text-indigo-800">Gemini</a>
+                    <a href="https://grok.com/" target="_blank" rel="noreferrer" className="text-indigo-800">Grok</a>
+                  </div>
+                </div>
+                <pre className="text-[11px] leading-5 bg-white border border-indigo-100 rounded-lg p-3 whitespace-pre-wrap">Convert to CSV with headers: AnimalID, Tag, Sex, Genotype, Cage. Normalize Sex to M/F, trim whitespace, keep cage text. Keep all rows, no invented data. Output CSV only.</pre>
+              </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4 mb-6">
