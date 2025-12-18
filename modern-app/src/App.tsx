@@ -252,64 +252,56 @@ function App() {
   }
 
   const currentTable = scheduleData?.day_tables?.[selectedDay]
+  const hasSchedule = Boolean(scheduleData)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <header className="text-center mb-12">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-4">
-            Y-Maze Scheduler
-          </h1>
-          <p className="text-gray-600 text-lg">
-            Generate balanced, randomized Y-maze schedules with ease
-          </p>
+    <div className="ui-container">
+      <div className="ui-stack">
+        <header className="ui-header">
+          <h1 className="ui-title">Y‑Maze Scheduler</h1>
+          <p className="ui-subtitle">Generate balanced, randomized Y‑maze schedules from pasted animal data.</p>
         </header>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-            <strong>Error:</strong> {error}
-            <button onClick={() => setError(null)} className="ml-4 text-red-900 underline">Dismiss</button>
+          <div className="ui-alert error">
+            <div style={{ whiteSpace: 'pre-wrap' }}>
+              <strong>Error:</strong> {error}
+            </div>
+            <button onClick={() => setError(null)} className="ui-btn ghost compact">Dismiss</button>
           </div>
         )}
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Input Form */}
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Input Parameters</h2>
-
-            <div className="mb-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
+        <section className="ui-panel">
+          <div className="ui-stack sm">
+            <div className="ui-field">
+              <div className="ui-row">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Animal Data
-                  </label>
-                  <p className="text-xs text-gray-500">
-                    Paste tab- or space-separated data: AnimalID | Tag | Sex | Genotype | ... | Cage (last)
-                  </p>
+                  <div className="ui-label">Animal Data</div>
+                  <div className="ui-hint">Paste tab- or space-separated: AnimalID Tag Sex Genotype … Cage (last).</div>
                 </div>
-                <div className="flex flex-wrap gap-3 items-center">
-                  <label className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="flex items-center gap-2 text-sm">
                     <input
                       type="checkbox"
-                      className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                       checked={useExampleData}
                       onChange={(e) => setUseExampleData(e.target.checked)}
                     />
-                    Use Example Data
+                    <span>Use Example Data</span>
                   </label>
                   <button
                     onClick={() => {
                       setUseExampleData(true)
                       setAnimalText(EXAMPLE_DATA)
                     }}
-                    className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1 rounded transition-colors"
+                    className="ui-btn ghost compact"
                   >
                     Reload Sample
                   </button>
                 </div>
               </div>
+
               <textarea
-                className="w-full h-48 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono text-sm resize-none"
+                className="ui-textarea mono"
                 placeholder="Paste animal data here..."
                 value={useExampleData ? EXAMPLE_DATA : animalText}
                 onChange={(e) => {
@@ -317,119 +309,101 @@ function App() {
                   setAnimalText(e.target.value)
                 }}
               />
-              <div className="mt-3 p-4 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-900 space-y-2">
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <div>
-                    <p className="text-xs font-semibold">Need to reformat your sheet?</p>
-                    <p className="text-xs">Send this prompt to ChatGPT, Gemini, or Grok; paste the returned CSV/TSV here.</p>
-                  </div>
-                  <div className="flex gap-2 text-xs font-semibold underline">
-                    <a href="https://chat.openai.com/" target="_blank" rel="noreferrer" className="text-indigo-800">ChatGPT</a>
-                    <a href="https://gemini.google.com/app" target="_blank" rel="noreferrer" className="text-indigo-800">Gemini</a>
-                    <a href="https://grok.com/" target="_blank" rel="noreferrer" className="text-indigo-800">Grok</a>
-                  </div>
-                </div>
-                <pre className="text-[11px] leading-5 bg-white border border-indigo-100 rounded-lg p-3 whitespace-pre-wrap">Convert to CSV with headers: AnimalID, Tag, Sex, Genotype, Cage. Normalize Sex to M/F, trim whitespace, keep cage text. Keep all rows, no invented data. Output CSV only.</pre>
-              </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Learning Days
-                </label>
+            <div className="ui-panel compact">
+              <div className="ui-row">
+                <div>
+                  <div className="ui-label">Need to reformat your sheet?</div>
+                  <div className="ui-hint">Send this prompt to ChatGPT, Gemini, or Grok; paste the returned CSV/TSV above.</div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <a href="https://chat.openai.com/" target="_blank" rel="noreferrer" className="ui-btn ghost compact">ChatGPT</a>
+                  <a href="https://gemini.google.com/app" target="_blank" rel="noreferrer" className="ui-btn ghost compact">Gemini</a>
+                  <a href="https://grok.com/" target="_blank" rel="noreferrer" className="ui-btn ghost compact">Grok</a>
+                </div>
+              </div>
+              <pre className="ui-codeblock">Convert to CSV with headers: AnimalID, Tag, Sex, Genotype, Cage. Normalize Sex to M/F, trim whitespace, keep cage text. Keep all rows, no invented data. Output CSV only.</pre>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="ui-field">
+                <div className="ui-label">Learning Days</div>
                 <input
                   type="number"
                   min="0"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="ui-input"
                   value={learningDays}
                   onChange={(e) => setLearningDays(parseInt(e.target.value) || 0)}
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Reversal Days
-                </label>
+              <div className="ui-field">
+                <div className="ui-label">Reversal Days</div>
                 <input
                   type="number"
                   min="0"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="ui-input"
                   value={reversalDays}
                   onChange={(e) => setReversalDays(parseInt(e.target.value) || 0)}
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Trials/Day
-                </label>
+              <div className="ui-field">
+                <div className="ui-label">Trials/Day</div>
                 <input
                   type="number"
                   min="1"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="ui-input"
                   value={trialsPerDay}
                   onChange={(e) => setTrialsPerDay(parseInt(e.target.value) || 1)}
                 />
               </div>
             </div>
 
-            <div className="mb-8">
-              <label className="flex items-center space-x-2 cursor-pointer">
+            <div className="ui-field">
+              <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
-                  className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                   checked={useSeed}
                   onChange={(e) => setUseSeed(e.target.checked)}
                 />
-                <span className="text-sm font-semibold text-gray-700">Use Random Seed</span>
+                <span>Use Random Seed</span>
               </label>
               {useSeed && (
                 <input
                   type="number"
-                  className="mt-2 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="ui-input"
                   value={seed}
                   onChange={(e) => setSeed(parseInt(e.target.value) || 0)}
                 />
               )}
             </div>
 
-            <div className="space-y-3">
+            <div className="grid gap-2">
               <button
                 onClick={handleGenerate}
                 disabled={loading}
                 data-testid="generate-btn"
-                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-3 px-6 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                className="ui-btn primary w-full"
               >
-                {loading ? 'Generating...' : 'Generate Schedule'}
+                {loading ? 'Generating…' : 'Generate Schedule'}
               </button>
 
-              {scheduleData && (
+              {hasSchedule && (
                 <>
-                  <button
-                    onClick={handleCopyOutput}
-                    className="w-full bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl"
-                  >
+                  <button onClick={handleCopyOutput} className="ui-btn secondary w-full">
                     Copy Output
                   </button>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      onClick={handleExportCSVs}
-                      className="bg-amber-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-amber-700 transition-all duration-200 text-sm"
-                    >
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <button onClick={handleExportCSVs} className="ui-btn secondary compact">
                       CSV/Day
                     </button>
-                    <button
-                      onClick={handleExportCombinedCSV}
-                      className="bg-amber-700 text-white font-semibold py-2 px-4 rounded-lg hover:bg-amber-800 transition-all duration-200 text-sm"
-                    >
+                    <button onClick={handleExportCombinedCSV} className="ui-btn secondary compact">
                       CSV Combined
                     </button>
-                    <button
-                      onClick={handleExportExcel}
-                      className="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700 transition-all duration-200 text-sm"
-                    >
+                    <button onClick={handleExportExcel} className="ui-btn secondary compact">
                       Excel
                     </button>
                   </div>
@@ -437,35 +411,45 @@ function App() {
               )}
             </div>
           </div>
+        </section>
 
-          {/* Results Display */}
-          {scheduleData && (
-            <div className="bg-white rounded-2xl shadow-xl p-8">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">Generated Schedule</h2>
+        <section className="ui-panel">
+          <div className="ui-row">
+            <h2 className="ui-h2">Generated Schedule</h2>
+            {hasSchedule && scheduleData && (
+              <span className="ui-hint">
+                {scheduleData.day_tables.length} days · {Object.keys(scheduleData.exit_arm_map).length} animals
+              </span>
+            )}
+          </div>
 
-              {/* Exit Arm Summary */}
-              <div className="mb-6 p-4 bg-indigo-50 rounded-lg">
-                <h3 className="font-semibold text-indigo-900 mb-2">Exit Arm Assignments</h3>
-                <div className="grid grid-cols-3 gap-2 text-sm max-h-32 overflow-y-auto">
+          {!hasSchedule && (
+            <div className="ui-panel compact text-center">
+              <p className="ui-hint">Generate a schedule to see results.</p>
+            </div>
+          )}
+
+          {hasSchedule && scheduleData && (
+            <div className="ui-stack sm">
+              <div className="ui-panel compact">
+                <h3 className="ui-h2">Exit Arm Assignments</h3>
+                <div className="grid gap-2 sm:grid-cols-2 max-h-56 overflow-y-auto text-sm">
                   {Object.entries(scheduleData.exit_arm_map).map(([id, arm]) => (
-                    <div key={id} className="text-gray-700">
-                      <span className="font-mono">{id}</span>: Arm {arm}
+                    <div key={id} className="ui-hint">
+                      <code>{id}</code>: Arm {arm}
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Day Selector */}
-              <div className="mb-6">
-                <div className="flex gap-2 flex-wrap">
+              <div className="ui-panel compact">
+                <div className="ui-label">Days</div>
+                <div className="flex flex-wrap gap-2">
                   {scheduleData.day_tables.map((table, idx) => (
                     <button
                       key={idx}
                       onClick={() => setSelectedDay(idx)}
-                      className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 ${selectedDay === idx
-                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
+                      className={`ui-btn compact ${selectedDay === idx ? 'primary' : 'secondary'}`}
                     >
                       Day {table.day} ({table.type})
                     </button>
@@ -473,57 +457,50 @@ function App() {
                 </div>
               </div>
 
-              {/* Schedule Table */}
               {currentTable && (
-                <>
-                  <div className="overflow-x-auto mb-6">
-                    <table className="w-full text-sm">
+                <div className="ui-panel compact">
+                  <div className="ui-row">
+                    <div className="ui-label">Day {currentTable.day} ({currentTable.type})</div>
+                    <span className="ui-hint">{currentTable.rows.length} rows</span>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="ui-table">
                       <thead>
-                        <tr className="bg-gradient-to-r from-indigo-50 to-purple-50">
+                        <tr>
                           {currentTable.header.map((col, idx) => (
-                            <th key={idx} className="px-3 py-2 text-left font-semibold text-gray-700 border-b-2 border-indigo-200 whitespace-nowrap">
-                              {col}
-                            </th>
+                            <th key={idx}>{col}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         {currentTable.rows.map((row, rowIdx) => (
-                          <tr key={rowIdx} className="hover:bg-gray-50 transition-colors">
+                          <tr key={rowIdx}>
                             {row.map((cell, cellIdx) => (
-                              <td key={cellIdx} className="px-3 py-2 border-b border-gray-200 font-mono text-xs">
-                                {cell}
-                              </td>
+                              <td key={cellIdx}><code>{cell}</code></td>
                             ))}
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
+                </div>
+              )}
 
-                  {/* Statistics */}
-                  <div className="p-4 bg-purple-50 rounded-lg">
-                    <h3 className="font-semibold text-purple-900 mb-2">Statistics</h3>
-                    <div className="grid grid-cols-2 gap-4 text-sm text-gray-700">
-                      <div>
-                        <span className="font-semibold">Total Animals:</span> {currentTable.rows.length}
-                      </div>
-                      <div>
-                        <span className="font-semibold">Trials per Animal:</span> {currentTable.header.length - 6}
-                      </div>
-                      <div>
-                        <span className="font-semibold">Total Days:</span> {scheduleData.day_tables.length}
-                      </div>
-                      <div>
-                        <span className="font-semibold">Current Day:</span> Day {currentTable.day} ({currentTable.type})
-                      </div>
-                    </div>
+              {currentTable && (
+                <div className="ui-panel compact">
+                  <h3 className="ui-h2">Statistics</h3>
+                  <div className="grid gap-2 sm:grid-cols-2 text-sm">
+                    <div className="ui-hint"><strong>Total Animals:</strong> {currentTable.rows.length}</div>
+                    <div className="ui-hint"><strong>Trials per Animal:</strong> {currentTable.header.length - 6}</div>
+                    <div className="ui-hint"><strong>Total Days:</strong> {scheduleData.day_tables.length}</div>
+                    <div className="ui-hint"><strong>Current Day:</strong> Day {currentTable.day} ({currentTable.type})</div>
                   </div>
-                </>
+                </div>
               )}
             </div>
           )}
-        </div>
+        </section>
       </div>
     </div>
   )
