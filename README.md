@@ -10,7 +10,7 @@ Modern React + FastAPI app under `modern-app/`. Legacy Tkinter GUI is documented
 
 ## Modern web app (preferred)
 - See `modern-app/README.md` for setup and dev commands.
-- Example run (Playwright E2E with bundled data — refreshed Dec 1, 2025): ![Y-maze scheduler app screenshot](modern-app/screenshots/example_run.png)
+- Example run (Playwright E2E with bundled data — refreshed Dec 25, 2025): ![Y-maze scheduler app screenshot](modern-app/screenshots/example_run.png)
 - Latest verification: `npm run test:e2e` (starts Vite front-end on :5175 and FastAPI back-end on :8000, drives the example flow, regenerates the screenshot above).
 
 ## Legacy Tkinter GUI (archived)
