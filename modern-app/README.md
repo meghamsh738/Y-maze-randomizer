@@ -1,13 +1,13 @@
 # Y-Maze Randomizer (React + FastAPI)
 
-Modern web UI for generating balanced Y-maze schedules. Paste animals or flip on **Use Example Data**, tweak days/trials, then export CSV/Excel. Bundled Playwright E2E verifies the flow and saves a screenshot.
+Modern web UI for generating balanced Y-maze schedules with lab notebook neo-brutalist styling. Paste animals or flip on **Use Example Data**, tweak days/trials, then export CSV/Excel. Bundled Playwright E2E verifies the flow and saves a screenshot.
 
 ## Project structure
 - `src/` – React UI (Vite + TypeScript + Tailwind).
 - `backend/` – FastAPI API with scheduling logic.
 - `example_data/animals.csv` – Built-in dataset for example mode.
 - `tests/` – Playwright E2E covering the example flow.
-- `screenshots/example_run.png` – Produced by the E2E as evidence.
+- `screenshots/example_run.png` – Produced by the E2E as evidence (Dec 28, 2025).
 - Preview: open `screenshots/example_run.png` after running the E2E.
 
 ## Screenshot
