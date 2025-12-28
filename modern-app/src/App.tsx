@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react'
+import {
+  Calendar,
+  Clipboard,
+  Download,
+  FlaskConical,
+  RefreshCw,
+  Shuffle
+} from 'lucide-react'
 import exampleAnimals from '../example_data/animals.csv?raw'
+import './App.css'
 
 interface AnimalInput {
   AnimalID: string
@@ -253,116 +262,137 @@ function App() {
 
   const currentTable = scheduleData?.day_tables?.[selectedDay]
   const hasSchedule = Boolean(scheduleData)
+  const statusLabel = loading ? 'Generating' : 'Ready'
+  const statusClass = loading ? 'warning' : 'success'
 
   return (
-    <div className="ui-container">
-      <div className="ui-stack">
-        <header className="ui-header">
-          <h1 className="ui-title">Y‑Maze Scheduler</h1>
-          <p className="ui-subtitle">Generate balanced, randomized Y‑maze schedules from pasted animal data.</p>
-        </header>
-
-        {error && (
-          <div className="ui-alert error">
-            <div style={{ whiteSpace: 'pre-wrap' }}>
-              <strong>Error:</strong> {error}
-            </div>
-            <button onClick={() => setError(null)} className="ui-btn ghost compact">Dismiss</button>
+    <div className="app-bg">
+      <header className="panel">
+        <div className="lab-head">
+          <div>
+            <p className="eyebrow">Y-maze scheduler</p>
+            <h2>Y‑Maze Randomizer</h2>
+            <p className="muted">Generate balanced, randomized Y‑maze schedules from pasted animal data.</p>
           </div>
-        )}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span className={`status-chip ${statusClass}`}>{statusLabel}</span>
+            <span className="pill soft">
+              <Calendar className="icon" aria-hidden="true" />
+              {learningDays + reversalDays} days planned
+            </span>
+            <span className="pill">
+              <FlaskConical className="icon" aria-hidden="true" />
+              Lab-ready exports
+            </span>
+          </div>
+        </div>
+      </header>
 
-        <section className="ui-panel">
-          <div className="ui-stack sm">
-            <div className="ui-field">
-              <div className="ui-row">
-                <div>
-                  <div className="ui-label">Animal Data</div>
-                  <div className="ui-hint">Paste tab- or space-separated: AnimalID Tag Sex Genotype … Cage (last).</div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={useExampleData}
-                      onChange={(e) => setUseExampleData(e.target.checked)}
-                    />
-                    <span>Use Example Data</span>
-                  </label>
-                  <button
-                    onClick={() => {
-                      setUseExampleData(true)
-                      setAnimalText(EXAMPLE_DATA)
-                    }}
-                    className="ui-btn ghost compact"
-                  >
-                    Reload Sample
-                  </button>
-                </div>
-              </div>
+      {error && (
+        <div className="panel" role="alert">
+          <div className="lab-head">
+            <div>
+              <p className="eyebrow">Alert</p>
+              <h2>Error</h2>
+              <p className="muted" style={{ whiteSpace: 'pre-wrap' }}>{error}</p>
+            </div>
+            <button onClick={() => setError(null)} className="ghost">Dismiss</button>
+          </div>
+        </div>
+      )}
 
-              <textarea
-                className="ui-textarea mono"
-                placeholder="Paste animal data here..."
-                value={useExampleData ? EXAMPLE_DATA : animalText}
-                onChange={(e) => {
-                  setUseExampleData(false)
-                  setAnimalText(e.target.value)
+      <div className="app-shell">
+        <aside className="panel sidebar">
+          <div className="lab-head">
+            <div>
+              <p className="eyebrow">Inputs</p>
+              <h2>Animal Intake</h2>
+              <p className="muted">Paste tab- or space-separated: AnimalID Tag Sex Genotype … Cage (last).</p>
+            </div>
+            <button
+              onClick={() => {
+                setUseExampleData(true)
+                setAnimalText(EXAMPLE_DATA)
+              }}
+              className="pill soft"
+              type="button"
+            >
+              <RefreshCw className="icon" aria-hidden="true" />
+              Sample
+            </button>
+          </div>
+
+          <div className="sidebar-section">
+            <div className="section-title">Animal Data</div>
+            <div className="chip-row">
+              <label className="pill soft">
+                <input
+                  type="checkbox"
+                  checked={useExampleData}
+                  onChange={(e) => setUseExampleData(e.target.checked)}
+                />
+                <span>Use Example Data</span>
+              </label>
+              <button
+                onClick={() => {
+                  setUseExampleData(true)
+                  setAnimalText(EXAMPLE_DATA)
                 }}
-              />
+                className="pill"
+                type="button"
+              >
+                Reload Sample
+              </button>
             </div>
 
-            <div className="ui-panel compact">
-              <div className="ui-row">
-                <div>
-                  <div className="ui-label">Need to reformat your sheet?</div>
-                  <div className="ui-hint">Send this prompt to ChatGPT, Gemini, or Grok; paste the returned CSV/TSV above.</div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <a href="https://chat.openai.com/" target="_blank" rel="noreferrer" className="ui-btn ghost compact">ChatGPT</a>
-                  <a href="https://gemini.google.com/app" target="_blank" rel="noreferrer" className="ui-btn ghost compact">Gemini</a>
-                  <a href="https://grok.com/" target="_blank" rel="noreferrer" className="ui-btn ghost compact">Grok</a>
-                </div>
-              </div>
-              <pre className="ui-codeblock">Convert to CSV with headers: AnimalID, Tag, Sex, Genotype, Cage. Normalize Sex to M/F, trim whitespace, keep cage text. Keep all rows, no invented data. Output CSV only.</pre>
-            </div>
+            <textarea
+              className="data-textarea"
+              placeholder="Paste animal data here..."
+              aria-label="Animal data input"
+              value={useExampleData ? EXAMPLE_DATA : animalText}
+              onChange={(e) => {
+                setUseExampleData(false)
+                setAnimalText(e.target.value)
+              }}
+            />
+          </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="ui-field">
-                <div className="ui-label">Learning Days</div>
+          <div className="sidebar-section">
+            <div className="section-title">Schedule Settings</div>
+            <div className="template-row">
+              <label className="field">
+                <span className="eyebrow">Learning Days</span>
                 <input
                   type="number"
                   min="0"
-                  className="ui-input"
                   value={learningDays}
                   onChange={(e) => setLearningDays(parseInt(e.target.value) || 0)}
                 />
-              </div>
+              </label>
 
-              <div className="ui-field">
-                <div className="ui-label">Reversal Days</div>
+              <label className="field">
+                <span className="eyebrow">Reversal Days</span>
                 <input
                   type="number"
                   min="0"
-                  className="ui-input"
                   value={reversalDays}
                   onChange={(e) => setReversalDays(parseInt(e.target.value) || 0)}
                 />
-              </div>
+              </label>
 
-              <div className="ui-field">
-                <div className="ui-label">Trials/Day</div>
+              <label className="field">
+                <span className="eyebrow">Trials/Day</span>
                 <input
                   type="number"
                   min="1"
-                  className="ui-input"
                   value={trialsPerDay}
                   onChange={(e) => setTrialsPerDay(parseInt(e.target.value) || 1)}
                 />
-              </div>
+              </label>
             </div>
 
-            <div className="ui-field">
-              <label className="flex items-center gap-2 text-sm">
+            <div className="field-row">
+              <label className="pill soft">
                 <input
                   type="checkbox"
                   checked={useSeed}
@@ -371,135 +401,212 @@ function App() {
                 <span>Use Random Seed</span>
               </label>
               {useSeed && (
-                <input
-                  type="number"
-                  className="ui-input"
-                  value={seed}
-                  onChange={(e) => setSeed(parseInt(e.target.value) || 0)}
-                />
+                <label className="field">
+                  <span className="eyebrow">Seed</span>
+                  <input
+                    type="number"
+                    value={seed}
+                    onChange={(e) => setSeed(parseInt(e.target.value) || 0)}
+                  />
+                </label>
               )}
             </div>
+          </div>
 
-            <div className="grid gap-2">
+          <div className="sidebar-section">
+            <div className="section-title">Actions</div>
+            <div className="edit-actions">
               <button
                 onClick={handleGenerate}
                 disabled={loading}
                 data-testid="generate-btn"
-                className="ui-btn primary w-full"
+                className="accent"
+                type="button"
               >
                 {loading ? 'Generating…' : 'Generate Schedule'}
               </button>
-
               {hasSchedule && (
-                <>
-                  <button onClick={handleCopyOutput} className="ui-btn secondary w-full">
-                    Copy Output
-                  </button>
-
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    <button onClick={handleExportCSVs} className="ui-btn secondary compact">
-                      CSV/Day
-                    </button>
-                    <button onClick={handleExportCombinedCSV} className="ui-btn secondary compact">
-                      CSV Combined
-                    </button>
-                    <button onClick={handleExportExcel} className="ui-btn secondary compact">
-                      Excel
-                    </button>
-                  </div>
-                </>
+                <button onClick={handleCopyOutput} className="ghost" type="button">
+                  <Clipboard className="icon" aria-hidden="true" />
+                  Copy Output
+                </button>
               )}
             </div>
-          </div>
-        </section>
 
-        <section className="ui-panel">
-          <div className="ui-row">
-            <h2 className="ui-h2">Generated Schedule</h2>
-            {hasSchedule && scheduleData && (
-              <span className="ui-hint">
-                {scheduleData.day_tables.length} days · {Object.keys(scheduleData.exit_arm_map).length} animals
-              </span>
+            {hasSchedule && (
+              <div className="template-row">
+                <button onClick={handleExportCSVs} className="ghost" type="button">
+                  <Shuffle className="icon" aria-hidden="true" />
+                  CSV/Day
+                </button>
+                <button onClick={handleExportCombinedCSV} className="ghost" type="button">
+                  <Shuffle className="icon" aria-hidden="true" />
+                  CSV Combined
+                </button>
+                <button onClick={handleExportExcel} className="ghost" type="button">
+                  <Download className="icon" aria-hidden="true" />
+                  Excel
+                </button>
+              </div>
             )}
           </div>
 
-          {!hasSchedule && (
-            <div className="ui-panel compact text-center">
-              <p className="ui-hint">Generate a schedule to see results.</p>
+          <div className="sidebar-section">
+            <div className="section-title">Sheet Helper</div>
+            <div className="link-panel">
+              <div className="field">
+                <span className="muted tiny">Send this prompt to ChatGPT, Gemini, or Grok; paste the returned CSV/TSV above.</span>
+              </div>
+              <div className="edit-actions">
+                <a href="https://chat.openai.com/" target="_blank" rel="noreferrer" className="pill soft">ChatGPT</a>
+                <a href="https://gemini.google.com/app" target="_blank" rel="noreferrer" className="pill soft">Gemini</a>
+                <a href="https://grok.com/" target="_blank" rel="noreferrer" className="pill soft">Grok</a>
+              </div>
+              <pre className="data-textarea" aria-label="Formatting prompt">
+                Convert to CSV with headers: AnimalID, Tag, Sex, Genotype, Cage. Normalize Sex to M/F, trim whitespace, keep cage text. Keep all rows, no invented data. Output CSV only.
+              </pre>
             </div>
-          )}
+          </div>
+        </aside>
 
-          {hasSchedule && scheduleData && (
-            <div className="ui-stack sm">
-              <div className="ui-panel compact">
-                <h3 className="ui-h2">Exit Arm Assignments</h3>
-                <div className="grid gap-2 sm:grid-cols-2 max-h-56 overflow-y-auto text-sm">
-                  {Object.entries(scheduleData.exit_arm_map).map(([id, arm]) => (
-                    <div key={id} className="ui-hint">
-                      <code>{id}</code>: Arm {arm}
+        <section className="panel editor">
+          <div className="editor-header">
+            <div className="title-row">
+              <h1>Generated Schedule</h1>
+              <span className={`status-chip ${hasSchedule ? 'success' : 'warning'}`}>
+                {hasSchedule ? 'Ready' : 'Waiting'}
+              </span>
+            </div>
+            {hasSchedule && scheduleData && (
+              <div className="chip-row">
+                <span className="pill soft">{scheduleData.day_tables.length} days</span>
+                <span className="pill">{Object.keys(scheduleData.exit_arm_map).length} animals</span>
+              </div>
+            )}
+          </div>
+
+          <div className="editor-body">
+            {!hasSchedule && (
+              <div className="empty">
+                <p className="muted">Generate a schedule to see results.</p>
+              </div>
+            )}
+
+            {hasSchedule && scheduleData && (
+              <>
+                <div className="today-card">
+                  <div className="today-head">
+                    <div>
+                      <h2>Exit Arm Assignments</h2>
+                      <p className="muted tiny">Stable arm mapping for the entire experiment.</p>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="ui-panel compact">
-                <div className="ui-label">Days</div>
-                <div className="flex flex-wrap gap-2">
-                  {scheduleData.day_tables.map((table, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setSelectedDay(idx)}
-                      className={`ui-btn compact ${selectedDay === idx ? 'primary' : 'secondary'}`}
-                    >
-                      Day {table.day} ({table.type})
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {currentTable && (
-                <div className="ui-panel compact">
-                  <div className="ui-row">
-                    <div className="ui-label">Day {currentTable.day} ({currentTable.type})</div>
-                    <span className="ui-hint">{currentTable.rows.length} rows</span>
+                    <span className="pill soft">{Object.keys(scheduleData.exit_arm_map).length} animals</span>
                   </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="ui-table">
+                  <div className="table-wrap">
+                    <table>
                       <thead>
                         <tr>
-                          {currentTable.header.map((col, idx) => (
-                            <th key={idx}>{col}</th>
-                          ))}
+                          <th>Animal ID</th>
+                          <th>Exit Arm</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {currentTable.rows.map((row, rowIdx) => (
-                          <tr key={rowIdx}>
-                            {row.map((cell, cellIdx) => (
-                              <td key={cellIdx}><code>{cell}</code></td>
-                            ))}
+                        {Object.entries(scheduleData.exit_arm_map).map(([id, arm]) => (
+                          <tr key={id}>
+                            <td><code>{id}</code></td>
+                            <td>Arm {arm}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 </div>
-              )}
 
-              {currentTable && (
-                <div className="ui-panel compact">
-                  <h3 className="ui-h2">Statistics</h3>
-                  <div className="grid gap-2 sm:grid-cols-2 text-sm">
-                    <div className="ui-hint"><strong>Total Animals:</strong> {currentTable.rows.length}</div>
-                    <div className="ui-hint"><strong>Trials per Animal:</strong> {currentTable.header.length - 6}</div>
-                    <div className="ui-hint"><strong>Total Days:</strong> {scheduleData.day_tables.length}</div>
-                    <div className="ui-hint"><strong>Current Day:</strong> Day {currentTable.day} ({currentTable.type})</div>
+                <div className="today-card">
+                  <div className="today-head">
+                    <div>
+                      <h2>Days</h2>
+                      <p className="muted tiny">Select a day to view the schedule table.</p>
+                    </div>
+                    <span className="pill soft">Trials/day: {trialsPerDay}</span>
+                  </div>
+                  <div className="editor-tabs">
+                    {scheduleData.day_tables.map((table, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedDay(idx)}
+                        className={`tab-button ${selectedDay === idx ? 'active' : ''}`}
+                        type="button"
+                      >
+                        Day {table.day} ({table.type})
+                      </button>
+                    ))}
                   </div>
                 </div>
-              )}
-            </div>
-          )}
+
+                {currentTable && (
+                  <div className="today-card">
+                    <div className="today-head">
+                      <div>
+                        <h2>Day {currentTable.day} ({currentTable.type})</h2>
+                        <p className="muted tiny">{currentTable.rows.length} rows</p>
+                      </div>
+                      <span className="pill soft">Trials: {currentTable.header.length - 6}</span>
+                    </div>
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            {currentTable.header.map((col, idx) => (
+                              <th key={idx}>{col}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {currentTable.rows.map((row, rowIdx) => (
+                            <tr key={rowIdx}>
+                              {row.map((cell, cellIdx) => (
+                                <td key={cellIdx}><code>{cell}</code></td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {currentTable && (
+                  <div className="today-card">
+                    <div className="today-head">
+                      <div>
+                        <h2>Statistics</h2>
+                        <p className="muted tiny">Quick summary for the selected day.</p>
+                      </div>
+                    </div>
+                    <div className="template-row">
+                      <div className="template-card active">
+                        <p className="eyebrow">Total Animals</p>
+                        <p className="muted">{currentTable.rows.length}</p>
+                      </div>
+                      <div className="template-card active">
+                        <p className="eyebrow">Trials/Animal</p>
+                        <p className="muted">{currentTable.header.length - 6}</p>
+                      </div>
+                      <div className="template-card active">
+                        <p className="eyebrow">Total Days</p>
+                        <p className="muted">{scheduleData.day_tables.length}</p>
+                      </div>
+                      <div className="template-card active">
+                        <p className="eyebrow">Current Day</p>
+                        <p className="muted">Day {currentTable.day}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </section>
       </div>
     </div>
