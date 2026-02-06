@@ -2,6 +2,8 @@
 
 Modern React + FastAPI app with lab notebook neo-brutalist styling under `modern-app/`. Legacy Tkinter GUI is documented separately in `LEGACY.md`.
 
+Part of **Easylab Suite**: when bundled, it launches from the suite desktop launcher as the **Y-Maze Randomizer** module.
+
 ## Features (shared logic)
 - Balanced exit-arm assignment within genotype, sex, and cage groups, while keeping global counts for arms 1–3 as even as possible.
 - Dynamic programming to build trial schedules that avoid the learning-day exit arm for each animal and minimize arm switching.
@@ -52,3 +54,9 @@ Actual schedules may vary depending on the random seed and parameter choices.
 
 ## Contributing
 Pull requests are welcome! Please open an issue to discuss major changes before submitting.
+
+## License
+Copyright (c) 2026 Meghamsh Teja Konda. All Rights Reserved. See `LICENSE`.
+
+## Contact
+Project maintainer — meghamshteja555@gmail.com

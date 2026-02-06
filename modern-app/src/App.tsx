@@ -32,8 +32,20 @@ interface ScheduleData {
 }
 
 const EXAMPLE_DATA = exampleAnimals.trim()
+const resolveApiBase = () => {
+  if (typeof window === 'undefined') return undefined
+  const params = new URLSearchParams(window.location.search)
+  const queryBase = params.get('apiBase') ?? undefined
+  const injected = (window as Window & { __EASYLAB_API__?: string }).__EASYLAB_API__
+  return injected ?? queryBase
+}
+
 // Default to local FastAPI dev server when env var is missing (common in Playwright runs)
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_BASE =
+  resolveApiBase() ??
+  import.meta.env.VITE_API_BASE ??
+  import.meta.env.VITE_API_URL ??
+  'http://127.0.0.1:8000'
 
 function App() {
   const [animalText, setAnimalText] = useState('')
@@ -609,6 +621,14 @@ function App() {
           </div>
         </section>
       </div>
+
+      <footer className="signature" data-testid="signature">
+        <span className="sig-primary">Made by Meghamsh Teja Konda</span>
+        <span className="sig-dot" aria-hidden="true" />
+        <a className="sig-link" href="mailto:meghamshteja555@gmail.com">
+          meghamshteja555@gmail.com
+        </a>
+      </footer>
     </div>
   )
 }

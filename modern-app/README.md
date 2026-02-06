@@ -2,6 +2,10 @@
 
 Modern web UI for generating balanced Y-maze schedules with lab notebook neo-brutalist styling. Paste animals or flip on **Use Example Data**, tweak days/trials, then export CSV/Excel. Bundled Playwright E2E verifies the flow and saves a screenshot.
 
+Part of **Easylab Suite**: this repo is bundled as the **Y-Maze Randomizer** module (`ymaze`).
+
+License: All Rights Reserved. See `../LICENSE`.
+
 ## Project structure
 - `src/` – React UI (Vite + TypeScript + Tailwind).
 - `backend/` – FastAPI API with scheduling logic.

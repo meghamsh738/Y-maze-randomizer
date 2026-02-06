@@ -22,12 +22,10 @@ app = FastAPI(title="Y-Maze Randomizer API")
 # CORS middleware to allow frontend communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-    ],  # Vite dev servers
-    allow_credentials=True,
+    # The suite loads front-ends from file:// inside Electron. Allow all origins so
+    # local module windows can talk to the bundled FastAPI backend.
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

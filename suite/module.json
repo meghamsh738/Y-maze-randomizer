@@ -1,0 +1,28 @@
+{
+  "id": "ymaze",
+  "name": "Y-Maze Randomizer",
+  "repoName": "Y-maze-randomizer",
+  "type": "fastapi",
+  "defaultPort": 8023,
+  "frontend": {
+    "kind": "vite-react",
+    "root": "modern-app",
+    "buildOutput": ".app-dist/web"
+  },
+  "backend": {
+    "kind": "fastapi",
+    "root": "modern-app/backend",
+    "entry": "backend.main:app"
+  },
+  "exampleData": {
+    "root": "modern-app/example_data"
+  },
+  "storage": {
+    "label": "Y-Maze"
+  },
+  "signature": {
+    "madeBy": "Meghamsh Teja Konda",
+    "contactEmail": "meghamshteja555@gmail.com"
+  }
+}
+
