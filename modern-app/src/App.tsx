@@ -279,14 +279,42 @@ function App() {
   const statusClass = loading ? 'warning' : 'success'
   const tutorialSteps: TutorialStep[] = [
     {
+      selector: '[data-testid="ymaze-use-example-toggle"]',
+      title: 'Use example data toggle',
+      description: 'Enable this for a quick end-to-end demo dataset.',
+    },
+    {
       selector: '[data-testid="ymaze-animal-input"]',
       title: 'Load animal data',
       description: 'Paste tabular animal data or load the bundled example first.',
+      details: [
+        'Expected fields: AnimalID, Tag, Sex, Genotype, Cage.',
+      ],
     },
     {
       selector: '[data-testid="ymaze-settings-section"]',
       title: 'Configure schedule settings',
       description: 'Set learning/reversal days, trials per day, and optional random seed.',
+    },
+    {
+      selector: '[data-testid="ymaze-learning-days-input"]',
+      title: 'Learning days',
+      description: 'Number of acquisition-learning days to generate.',
+    },
+    {
+      selector: '[data-testid="ymaze-reversal-days-input"]',
+      title: 'Reversal days',
+      description: 'Number of reversal-learning days after acquisition.',
+    },
+    {
+      selector: '[data-testid="ymaze-trials-input"]',
+      title: 'Trials per day',
+      description: 'Controls schedule table width and trial repetition count.',
+    },
+    {
+      selector: '[data-testid="ymaze-seed-toggle"]',
+      title: 'Random seed option',
+      description: 'Enable and set a seed to reproduce identical randomization.',
     },
     {
       selector: '[data-testid="generate-btn"]',
@@ -370,6 +398,7 @@ function App() {
                   type="checkbox"
                   checked={useExampleData}
                   onChange={(e) => setUseExampleData(e.target.checked)}
+                  data-testid="ymaze-use-example-toggle"
                 />
                 <span>Use Example Data</span>
               </label>
@@ -408,6 +437,7 @@ function App() {
                   min="0"
                   value={learningDays}
                   onChange={(e) => setLearningDays(parseInt(e.target.value) || 0)}
+                  data-testid="ymaze-learning-days-input"
                 />
               </label>
 
@@ -418,6 +448,7 @@ function App() {
                   min="0"
                   value={reversalDays}
                   onChange={(e) => setReversalDays(parseInt(e.target.value) || 0)}
+                  data-testid="ymaze-reversal-days-input"
                 />
               </label>
 
@@ -428,6 +459,7 @@ function App() {
                   min="1"
                   value={trialsPerDay}
                   onChange={(e) => setTrialsPerDay(parseInt(e.target.value) || 1)}
+                  data-testid="ymaze-trials-input"
                 />
               </label>
             </div>
@@ -438,6 +470,7 @@ function App() {
                   type="checkbox"
                   checked={useSeed}
                   onChange={(e) => setUseSeed(e.target.checked)}
+                  data-testid="ymaze-seed-toggle"
                 />
                 <span>Use Random Seed</span>
               </label>
@@ -448,6 +481,7 @@ function App() {
                     type="number"
                     value={seed}
                     onChange={(e) => setSeed(parseInt(e.target.value) || 0)}
+                    data-testid="ymaze-seed-input"
                   />
                 </label>
               )}
