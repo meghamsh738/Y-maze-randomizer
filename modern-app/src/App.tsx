@@ -7,6 +7,7 @@ import {
   RefreshCw,
   Shuffle
 } from 'lucide-react'
+import { GuidedTutorial, type TutorialStep } from './GuidedTutorial'
 import exampleAnimals from '../example_data/animals.csv?raw'
 import './App.css'
 
@@ -276,6 +277,33 @@ function App() {
   const hasSchedule = Boolean(scheduleData)
   const statusLabel = loading ? 'Generating' : 'Ready'
   const statusClass = loading ? 'warning' : 'success'
+  const tutorialSteps: TutorialStep[] = [
+    {
+      selector: '[data-testid="ymaze-animal-input"]',
+      title: 'Load animal data',
+      description: 'Paste tabular animal data or load the bundled example first.',
+    },
+    {
+      selector: '[data-testid="ymaze-settings-section"]',
+      title: 'Configure schedule settings',
+      description: 'Set learning/reversal days, trials per day, and optional random seed.',
+    },
+    {
+      selector: '[data-testid="generate-btn"]',
+      title: 'Generate schedule',
+      description: 'Build randomized schedules once the input sheet and settings are ready.',
+    },
+    {
+      selector: '[data-testid="ymaze-export-excel-btn"]',
+      title: 'Export outputs',
+      description: 'Download the final workbook or CSV variants after generation.',
+    },
+    {
+      selector: '[data-testid="ymaze-results-panel"]',
+      title: 'Review day tables',
+      description: 'Inspect exit-arm mapping and day-by-day schedules before export.',
+    },
+  ]
 
   return (
     <div className="app-bg">
@@ -361,6 +389,7 @@ function App() {
               className="data-textarea"
               placeholder="Paste animal data here..."
               aria-label="Animal data input"
+              data-testid="ymaze-animal-input"
               value={useExampleData ? EXAMPLE_DATA : animalText}
               onChange={(e) => {
                 setUseExampleData(false)
@@ -369,7 +398,7 @@ function App() {
             />
           </div>
 
-          <div className="sidebar-section">
+          <div className="sidebar-section" data-testid="ymaze-settings-section">
             <div className="section-title">Schedule Settings</div>
             <div className="template-row">
               <label className="field">
@@ -428,6 +457,10 @@ function App() {
           <div className="sidebar-section">
             <div className="section-title">Actions</div>
             <div className="edit-actions">
+              <GuidedTutorial
+                steps={tutorialSteps}
+                startLabel="Tutorial"
+              />
               <button
                 onClick={handleGenerate}
                 disabled={loading}
@@ -455,7 +488,7 @@ function App() {
                   <Shuffle className="icon" aria-hidden="true" />
                   CSV Combined
                 </button>
-                <button onClick={handleExportExcel} className="ghost" type="button">
+                <button onClick={handleExportExcel} className="ghost" type="button" data-testid="ymaze-export-excel-btn">
                   <Download className="icon" aria-hidden="true" />
                   Excel
                 </button>
@@ -481,7 +514,7 @@ function App() {
           </div>
         </aside>
 
-        <section className="panel editor">
+        <section className="panel editor" data-testid="ymaze-results-panel">
           <div className="editor-header">
             <div className="title-row">
               <h1>Generated Schedule</h1>
