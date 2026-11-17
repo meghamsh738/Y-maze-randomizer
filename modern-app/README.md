@@ -1,6 +1,6 @@
 # Y-Maze Randomizer (React + FastAPI)
 
-Modern web UI for generating balanced Y-maze schedules with lab notebook neo-brutalist styling. Paste animals or flip on **Use Example Data**, tweak days/trials, then export CSV/Excel. Bundled Playwright E2E verifies the flow and saves a screenshot.
+The guided Y-maze workflow imports animals, applies a named protocol, generates a seeded schedule, and requires review before export. It shows learning exit-arm counts and subgroup balance, supports locked learning assignments, and saves a portable package containing the exact reviewed day tables and settings.
 
 Part of **Easylab Suite**: this repo is bundled as the **Y-Maze Randomizer** module (`ymaze`).
 
@@ -10,33 +10,38 @@ License: All Rights Reserved. See `../LICENSE`.
 - `src/` – React UI (Vite + TypeScript + Tailwind).
 - `backend/` – FastAPI API with scheduling logic.
 - `example_data/animals.csv` – Built-in dataset for example mode.
-- `tests/` – Playwright E2E covering the example flow.
-- `screenshots/example_run.png` – Produced by the E2E as evidence (Dec 28, 2025).
-- Preview: open `screenshots/example_run.png` after running the E2E.
+- `tests/` – Python schedule/export regressions and Playwright workflow checks.
+- `screenshots/example_run.png` – Historical screenshot from the earlier interface.
 
 ## Screenshot
 | Example run (Use Example Data) |
 | --- |
 | ![Example schedule generation](screenshots/example_run.png) |
 
-## Prerequisites
-- Node 18+ and npm
-- Python 3.10+
+## Runtime and ports
+
+EasyLab Next uses the `codex/easylab-next-20261113` worktree. Its Suite API uses strict loopback port **18523**. The isolated browser preview uses strict port **19523**. Preview data, settings, exports, Python cache and user data are rooted under `runtime/ymaze` inside the EasyLab Next runtime. The Suite supplies its own Next Electron user profile.
 
 ## Setup
 ```bash
-npm install
-pip install -r backend/requirements.txt
+npm ci
+python3.11 -m venv '/Volumes/Coding Projects/Active/easylab-next/runtime/python-envs/ymaze'
+'/Volumes/Coding Projects/Active/easylab-next/runtime/python-envs/ymaze/bin/python' -m pip install -r backend/requirements.txt
 ```
 
-## Run (dev)
+## Run an isolated preview
+
+Set `EASYLAB_PYTHON` to the interpreter in that dedicated environment. From this directory, run:
+
 ```bash
-# API on :8000
+# Point the backend at the dedicated runtime environment.
+export EASYLAB_PYTHON='/Volumes/Coding Projects/Active/easylab-next/runtime/python-envs/ymaze/bin/python'
+# API on 127.0.0.1:18523
 npm run dev:back
-# Frontend on :5175
+# Browser UI on 127.0.0.1:19523
 npm run dev:front
 ```
-Open http://localhost:5175, check **Use Example Data**, and click **Generate Schedule**.
+The API launcher refuses to start from another checkout or when port 18523 is occupied. Vite refuses to use a different port if 19523 is occupied. Open `http://127.0.0.1:19523` and choose **Use Example Data** for a fictional walkthrough.
 
 ## Data format & quick AI helper
 - Required columns (CSV/XLSX): `AnimalID, Tag, Sex, Genotype, Cage` (see `example_data/animals.csv`).
@@ -44,16 +49,21 @@ Open http://localhost:5175, check **Use Example Data**, and click **Generate Sch
 - Prompt: "Convert my table to CSV with headers: AnimalID, Tag, Sex, Genotype, Cage. Keep data unchanged, no new rows, output UTF-8 CSV text only."
 - Save as `animals.csv`, then upload or paste. See `screenshots/data-format-helper.svg` for a one-screen guide.
 
-## Tests & screenshot
+## Checks
 ```bash
-npx playwright install --with-deps chromium
+python -m unittest discover -s tests -p 'test_*.py'
 npm run test:e2e
 ```
-This starts both servers, drives the example flow, and writes `screenshots/example_run.png`.
+Playwright starts both strict-port servers in an isolated browser context. Python tests check same-seed replay, automatically generated seed replay, hard locks, repeat limits, exact Excel table cells and literal text cells for formula-like values.
+
+## Spreadsheet text safety
+
+Excel workbook exports keep animal and protocol text as literal cells, including strings that begin with `=`, `+`, `-` or `@`. CSV has no cell types, so it keeps the exact values and the app advises importing affected columns as text in spreadsheet software.
 
 ## API highlights
-- `POST /generate-schedule` – animals[], learning_days, reversal_days, trials_per_day, seed?, use_example?
-- `POST /export-excel` – same body, returns Excel workbook
+- `POST /generate-schedule` – returns a schedule, effective seed, protocol settings, input animals and locks.
+- `POST /export-reviewed-excel` – exports the exact submitted day tables with a protocol summary sheet.
+- `POST /export-excel` – preserves the earlier request-and-generate route for legacy callers.
 - `POST /upload`
 - `GET /health`
 

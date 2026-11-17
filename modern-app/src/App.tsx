@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import {
   Calendar,
   Clipboard,
@@ -19,6 +19,26 @@ interface AnimalInput {
   Cage: string
 }
 
+type BalanceField = 'Genotype' | 'Sex' | 'Cage'
+
+interface ProtocolPreset {
+  id: string
+  name: string
+  learning_days: number
+  reversal_days: number
+  trials_per_day: number
+  balance_by: BalanceField[]
+  max_consecutive_repeats: number
+}
+
+interface ScheduleSettings {
+  learning_days: number
+  reversal_days: number
+  trials_per_day: number
+  balance_by: BalanceField[]
+  max_consecutive_repeats: number
+}
+
 interface DayTable {
   day: number
   type: 'Learning' | 'Reversal'
@@ -28,8 +48,121 @@ interface DayTable {
 
 interface ScheduleData {
   success: boolean
+  seed: number
+  requested_seed: number | null
+  algorithm_version: string
+  preset_name: string
+  animals: AnimalInput[]
+  settings: ScheduleSettings
+  locked_exit_arms: Record<string, number>
+  use_example: boolean
   exit_arm_map: Record<string, number>
   day_tables: DayTable[]
+}
+
+interface SavedRun {
+  format: 'easylab-ymaze-run'
+  version: 1
+  saved_at: string
+  input_text: string
+  use_example: boolean
+  requested_seed: number | null
+  schedule: ScheduleData
+  reviewed: boolean
+}
+
+const PRESET_KEY = 'easylab-next:ymaze:presets:v1'
+const REVIEW_KEY = 'easylab-next:ymaze:reviewed-run:v1'
+const DEFAULT_PRESET: ProtocolPreset = {
+  id: 'standard-learning-reversal',
+  name: 'Standard learning and reversal',
+  learning_days: 3,
+  reversal_days: 2,
+  trials_per_day: 10,
+  balance_by: ['Genotype', 'Sex', 'Cage'],
+  max_consecutive_repeats: 2,
+}
+
+function readSavedRun(): SavedRun | null {
+  try {
+    const value = localStorage.getItem(REVIEW_KEY)
+    if (!value) return null
+    const parsed: unknown = JSON.parse(value)
+    return isSavedRun(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function readCustomPresets(): ProtocolPreset[] {
+  try {
+    const value = localStorage.getItem(PRESET_KEY)
+    if (!value) return []
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed)
+      ? parsed.filter((preset) => typeof preset?.id === 'string' && typeof preset?.name === 'string')
+      : []
+  } catch {
+    return []
+  }
+}
+
+function csvCell(value: string | number): string {
+  const text = String(value)
+  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
+}
+
+function tableCsv(table: DayTable): string {
+  return [table.header, ...table.rows].map((row) => row.map(csvCell).join(',')).join('\r\n')
+}
+
+function splitCsvLine(line: string): string[] {
+  const cells: string[] = []
+  let cell = ''
+  let quoted = false
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index]
+    if (character === '"' && line[index + 1] === '"' && quoted) {
+      cell += '"'
+      index += 1
+    } else if (character === '"') {
+      quoted = !quoted
+    } else if (character === ',' && !quoted) {
+      cells.push(cell.trim())
+      cell = ''
+    } else {
+      cell += character
+    }
+  }
+  cells.push(cell.trim())
+  return cells
+}
+
+function isSavedRun(value: unknown): value is SavedRun {
+  if (!value || typeof value !== 'object') return false
+  const run = value as Partial<SavedRun>
+  const schedule = run.schedule
+  if (run.format !== 'easylab-ymaze-run' || run.version !== 1 ||
+    typeof run.input_text !== 'string' || typeof run.use_example !== 'boolean' ||
+    typeof run.reviewed !== 'boolean' || !schedule ||
+    !Number.isInteger(schedule.seed) || !Array.isArray(schedule.animals) ||
+    !Array.isArray(schedule.day_tables) || schedule.day_tables.length === 0 ||
+    !schedule.settings || !schedule.locked_exit_arms) {
+    return false
+  }
+  return schedule.day_tables.every((table) =>
+      Array.isArray(table.header) && Array.isArray(table.rows) &&
+      table.rows.every((row) => Array.isArray(row) && row.length === table.header.length),
+    )
+}
+
+function settingsMatchPreset(settings: ScheduleSettings, preset: ProtocolPreset | undefined): boolean {
+  if (!preset) return false
+  return settings.learning_days === preset.learning_days &&
+    settings.reversal_days === preset.reversal_days &&
+    settings.trials_per_day === preset.trials_per_day &&
+    settings.max_consecutive_repeats === preset.max_consecutive_repeats &&
+    [...settings.balance_by].sort().join(',') === [...preset.balance_by].sort().join(',')
 }
 
 const EXAMPLE_DATA = exampleAnimals.trim()
@@ -38,27 +171,47 @@ const resolveApiBase = () => {
   const params = new URLSearchParams(window.location.search)
   const queryBase = params.get('apiBase') ?? undefined
   const injected = (window as Window & { __EASYLAB_API__?: string }).__EASYLAB_API__
-  return injected ?? queryBase
+  const candidate = injected ?? queryBase ?? import.meta.env.VITE_API_BASE ?? import.meta.env.VITE_API_URL
+  if (!candidate) return undefined
+  try {
+    const parsed = new URL(candidate)
+    if (parsed.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(parsed.hostname) && parsed.port === '18523') {
+      return parsed.origin
+    }
+  } catch {
+    return undefined
+  }
+  return undefined
 }
 
-// Default to local FastAPI dev server when env var is missing (common in Playwright runs)
 const API_BASE =
   resolveApiBase() ??
-  import.meta.env.VITE_API_BASE ??
-  import.meta.env.VITE_API_URL ??
-  'http://127.0.0.1:8000'
+  'http://127.0.0.1:18523'
 
 function App() {
-  const [animalText, setAnimalText] = useState('')
-  const [learningDays, setLearningDays] = useState(3)
-  const [reversalDays, setReversalDays] = useState(2)
-  const [trialsPerDay, setTrialsPerDay] = useState(10)
-  const [useExampleData, setUseExampleData] = useState(false)
-  const [useSeed, setUseSeed] = useState(false)
-  const [seed, setSeed] = useState(42)
+  const [restoredRun] = useState(readSavedRun)
+  const [customPresets, setCustomPresets] = useState(readCustomPresets)
+  const [animalText, setAnimalText] = useState(restoredRun?.input_text ?? '')
+  const [learningDays, setLearningDays] = useState(restoredRun?.schedule.settings.learning_days ?? DEFAULT_PRESET.learning_days)
+  const [reversalDays, setReversalDays] = useState(restoredRun?.schedule.settings.reversal_days ?? DEFAULT_PRESET.reversal_days)
+  const [trialsPerDay, setTrialsPerDay] = useState(restoredRun?.schedule.settings.trials_per_day ?? DEFAULT_PRESET.trials_per_day)
+  const [balanceBy, setBalanceBy] = useState<BalanceField[]>(restoredRun?.schedule.settings.balance_by ?? DEFAULT_PRESET.balance_by)
+  const [maxConsecutiveRepeats, setMaxConsecutiveRepeats] = useState(restoredRun?.schedule.settings.max_consecutive_repeats ?? DEFAULT_PRESET.max_consecutive_repeats)
+  const [presetName, setPresetName] = useState(restoredRun?.schedule.preset_name ?? DEFAULT_PRESET.name)
+  const [selectedPresetId, setSelectedPresetId] = useState(() => {
+    if (!restoredRun) return DEFAULT_PRESET.id
+    if (restoredRun.schedule.preset_name === DEFAULT_PRESET.name) return DEFAULT_PRESET.id
+    return customPresets.find((preset) => preset.name === restoredRun.schedule.preset_name)?.id ?? ''
+  })
+  const [presetToSave, setPresetToSave] = useState('')
+  const [lockedExitArms, setLockedExitArms] = useState<Record<string, number>>(restoredRun?.schedule.locked_exit_arms ?? {})
+  const [useExampleData, setUseExampleData] = useState(restoredRun?.use_example ?? false)
+  const [useSeed, setUseSeed] = useState(restoredRun?.requested_seed !== null && restoredRun?.requested_seed !== undefined)
+  const [seed, setSeed] = useState(restoredRun?.requested_seed ?? 42)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [scheduleData, setScheduleData] = useState<ScheduleData | null>(null)
+  const [scheduleData, setScheduleData] = useState<ScheduleData | null>(restoredRun?.schedule ?? null)
+  const [isReviewed, setIsReviewed] = useState(restoredRun?.reviewed ?? false)
   const [selectedDay, setSelectedDay] = useState(0)
 
   useEffect(() => {
@@ -71,35 +224,93 @@ function App() {
     const lines = text.trim().split('\n').filter(l => l.trim())
     const animals: AnimalInput[] = []
     const errors: string[] = []
+    const seenIds = new Set<string>()
 
     lines.forEach((line, idx) => {
       if (line.toLowerCase().includes('animalid') && line.toLowerCase().includes('sex')) return
 
-      const parts = line
-        .split(/[\s,\t]+/)
-        .map(p => p.trim())
-        .filter(p => p)
+      const parts = line.includes('\t')
+        ? line.split('\t').map((part) => part.trim())
+        : line.includes(',')
+          ? splitCsvLine(line)
+          : line.trim().split(/\s{2,}/).map((part) => part.trim())
 
-      if (parts.length < 5) {
-        errors.push(`Line ${idx + 1}: expected 5 fields (AnimalID Tag Sex Genotype Cage)`) 
+      if (parts.length < 5 || parts.slice(0, 5).some((part) => !part)) {
+        errors.push(`Line ${idx + 1}: enter AnimalID, Tag, Sex, Genotype and Cage.`)
         return
       }
 
-      animals.push({
-        AnimalID: parts[0],
+      const animal = {
+        AnimalID: parts[0].trim(),
         Tag: parts[1],
         Sex: parts[2],
         Genotype: parts[3],
         Cage: parts[parts.length - 1]
-      })
+      }
+      if (seenIds.has(animal.AnimalID)) {
+        errors.push(`Line ${idx + 1}: AnimalID ${animal.AnimalID} is duplicated.`)
+        return
+      }
+      seenIds.add(animal.AnimalID)
+      animals.push(animal)
     })
 
     return { animals, errors }
   }
 
+  const sourceText = useExampleData ? EXAMPLE_DATA : animalText
+  const parsedInput = parseAnimals(sourceText)
+  const customSelectedPreset = customPresets.find((preset) => preset.id === selectedPresetId)
+  const currentLockMap = Object.fromEntries(
+    Object.entries(lockedExitArms).filter(([animalId]) => parsedInput.animals.some((animal) => animal.AnimalID === animalId)),
+  )
+  const currentSettings: ScheduleSettings = {
+    learning_days: learningDays,
+    reversal_days: reversalDays,
+    trials_per_day: trialsPerDay,
+    balance_by: balanceBy,
+    max_consecutive_repeats: maxConsecutiveRepeats,
+  }
+  const selectedPreset = selectedPresetId === DEFAULT_PRESET.id ? DEFAULT_PRESET : customSelectedPreset
+  const settingsMatchSelectedPreset = settingsMatchPreset(currentSettings, selectedPreset)
+  const runMatchesCurrentInputs = Boolean(
+    scheduleData &&
+    parsedInput.errors.length === 0 &&
+    JSON.stringify(scheduleData.animals) === JSON.stringify(parsedInput.animals) &&
+    JSON.stringify(scheduleData.settings) === JSON.stringify(currentSettings) &&
+    JSON.stringify(scheduleData.locked_exit_arms) === JSON.stringify(currentLockMap) &&
+    scheduleData.preset_name === presetName &&
+    scheduleData.use_example === useExampleData &&
+    scheduleData.requested_seed === (useSeed ? seed : null),
+  )
+  const reviewIsCurrent = isReviewed && runMatchesCurrentInputs
+  const allocationGroups = useMemo(() => {
+    if (!scheduleData) return []
+    const groups = new Map<string, { label: string; count: number; arms: Record<number, number> }>()
+    for (const animal of scheduleData.animals) {
+      const fields = scheduleData.settings.balance_by
+      const label = fields.length ? fields.map((field) => `${field}: ${animal[field]}`).join(' · ') : 'Full cohort'
+      const group = groups.get(label) ?? { label, count: 0, arms: { 1: 0, 2: 0, 3: 0 } }
+      const arm = scheduleData.exit_arm_map[animal.AnimalID]
+      group.count += 1
+      if (arm) group.arms[arm] += 1
+      groups.set(label, group)
+    }
+    return Array.from(groups.values())
+  }, [scheduleData])
+  const totalArmCounts = useMemo(() => {
+    const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0 }
+    if (scheduleData) {
+      Object.values(scheduleData.exit_arm_map).forEach((arm) => { counts[arm] += 1 })
+    }
+    return counts
+  }, [scheduleData])
+  const csvHasFormulaLikeText = scheduleData?.animals.some((animal) =>
+    Object.values(animal).some((value) => /^[=+\-@]/.test(value)),
+  ) ?? false
+
   const handleGenerate = async () => {
-    const sourceText = useExampleData ? EXAMPLE_DATA : animalText
-    const { animals, errors } = parseAnimals(sourceText)
+    const { animals, errors } = parsedInput
     if (animals.length === 0) {
       setError(errors[0] || 'Please paste animal data first')
       return
@@ -123,8 +334,13 @@ function App() {
         learning_days: learningDays,
         reversal_days: reversalDays,
         trials_per_day: trialsPerDay,
+        balance_by: balanceBy,
+        max_consecutive_repeats: maxConsecutiveRepeats,
+        locked_exit_arms: currentLockMap,
+        preset_name: presetName,
         seed: useSeed ? seed : null,
-        use_example: useExampleData
+        use_example: false,
+        source_is_example: useExampleData,
       }
 
       const response = await fetch(`${API_BASE}/generate-schedule`, {
@@ -140,6 +356,7 @@ function App() {
 
       const data = await response.json()
       setScheduleData(data)
+      setIsReviewed(false)
       setSelectedDay(0)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -151,7 +368,7 @@ function App() {
   const handleCopyOutput = () => {
     if (!scheduleData) return
 
-    let output = 'Y-Maze Schedule\n\n'
+    let output = `Y-Maze Schedule\nPreset: ${scheduleData.preset_name}\nSeed: ${scheduleData.seed}\nBalance within: ${scheduleData.settings.balance_by.join(', ') || 'Full cohort'}\nMaximum consecutive repeats: ${scheduleData.settings.max_consecutive_repeats}\nReviewed: ${reviewIsCurrent ? 'Yes' : 'No'}\n\n`
 
     // Add exit arm map
     output += 'Exit Arm Assignments:\n'
@@ -175,35 +392,12 @@ function App() {
   }
 
   const handleExportExcel = async () => {
-    const sourceText = useExampleData ? EXAMPLE_DATA : animalText
-    const { animals, errors } = parseAnimals(sourceText)
-    if (animals.length === 0) {
-      setError(errors[0] || 'Please paste animal data first')
-      return
-    }
-    if (errors.length) {
-      setError(errors.join('\n'))
-      return
-    }
-    if (learningDays <= 0 || reversalDays < 0 || trialsPerDay <= 0) {
-      setError('Learning days and trials must be > 0; reversal days must be ≥ 0.')
-      return
-    }
-
+    if (!scheduleData || !reviewIsCurrent) return
     try {
-      const request = {
-        animals,
-        learning_days: learningDays,
-        reversal_days: reversalDays,
-        trials_per_day: trialsPerDay,
-        seed: useSeed ? seed : null,
-        use_example: useExampleData
-      }
-
-      const response = await fetch(`${API_BASE}/export-excel`, {
+      const response = await fetch(`${API_BASE}/export-reviewed-excel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(request)
+        body: JSON.stringify(scheduleData)
       })
 
       if (!response.ok) {
@@ -215,7 +409,7 @@ function App() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'ymaze_schedule.xlsx'
+      a.download = 'ymaze_reviewed_schedule.xlsx'
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
@@ -226,15 +420,10 @@ function App() {
   }
 
   const handleExportCSVs = () => {
-    if (!scheduleData) return
+    if (!scheduleData || !reviewIsCurrent) return
 
     scheduleData.day_tables.forEach(table => {
-      const csv = [table.header.join(',')]
-      table.rows.forEach(row => {
-        csv.push(row.join(','))
-      })
-
-      const blob = new Blob([csv.join('\n')], { type: 'text/csv' })
+      const blob = new Blob([tableCsv(table)], { type: 'text/csv;charset=utf-8' })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -249,20 +438,17 @@ function App() {
   }
 
   const handleExportCombinedCSV = () => {
-    if (!scheduleData) return
+    if (!scheduleData || !reviewIsCurrent) return
 
     const csv: string[] = []
 
     scheduleData.day_tables.forEach((table, idx) => {
       if (idx > 0) csv.push('') // blank line between days
-      csv.push(`Day ${table.day} (${table.type})`)
-      csv.push(table.header.join(','))
-      table.rows.forEach(row => {
-        csv.push(row.join(','))
-      })
+      csv.push(csvCell(`Day ${table.day} (${table.type})`))
+      csv.push(...tableCsv(table).split('\r\n'))
     })
 
-    const blob = new Blob([csv.join('\n')], { type: 'text/csv' })
+    const blob = new Blob([csv.join('\r\n')], { type: 'text/csv;charset=utf-8' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -273,10 +459,122 @@ function App() {
     document.body.removeChild(a)
   }
 
+  const handleSavePreset = () => {
+    const name = presetToSave.trim()
+    if (!name) {
+      setError('Enter a name for this protocol preset.')
+      return
+    }
+    const preset: ProtocolPreset = {
+      id: `custom-${Date.now()}`,
+      name,
+      ...currentSettings,
+    }
+    const nextPresets = [...customPresets.filter((item) => item.name.toLowerCase() !== name.toLowerCase()), preset]
+    try {
+      localStorage.setItem(PRESET_KEY, JSON.stringify(nextPresets))
+    } catch {
+      setError('This browser could not save local protocol presets.')
+      return
+    }
+    setCustomPresets(nextPresets)
+    setPresetName(name)
+    setSelectedPresetId(preset.id)
+    setPresetToSave('')
+  }
+
+  const applyPreset = (preset: ProtocolPreset) => {
+    setSelectedPresetId(preset.id)
+    setPresetName(preset.name)
+    setLearningDays(preset.learning_days)
+    setReversalDays(preset.reversal_days)
+    setTrialsPerDay(preset.trials_per_day)
+    setBalanceBy(preset.balance_by)
+    setMaxConsecutiveRepeats(preset.max_consecutive_repeats)
+  }
+
+  const createSavedRun = (reviewed: boolean): SavedRun | null => {
+    if (!scheduleData) return null
+    return {
+      format: 'easylab-ymaze-run',
+      version: 1,
+      saved_at: new Date().toISOString(),
+      input_text: useExampleData ? EXAMPLE_DATA : animalText,
+      use_example: scheduleData.use_example,
+      requested_seed: useSeed ? seed : null,
+      schedule: scheduleData,
+      reviewed,
+    }
+  }
+
+  const handleReviewAndLock = () => {
+    if (!scheduleData || !runMatchesCurrentInputs) return
+    const savedRun = createSavedRun(true)
+    if (!savedRun) return
+    try {
+      localStorage.setItem(REVIEW_KEY, JSON.stringify(savedRun))
+      setIsReviewed(true)
+      setError(null)
+    } catch {
+      setIsReviewed(true)
+      setError('This browser could not save the reviewed run. Download the run package to keep a copy.')
+    }
+  }
+
+  const handleDownloadPackage = () => {
+    if (!scheduleData || !reviewIsCurrent) return
+    const savedRun = createSavedRun(true)
+    if (!savedRun) return
+    const blob = new Blob([JSON.stringify(savedRun, null, 2)], { type: 'application/json' })
+    const url = window.URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `ymaze-${scheduleData.preset_name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-seed-${scheduleData.seed}.easylab-ymaze.json`
+    anchor.click()
+    window.URL.revokeObjectURL(url)
+  }
+
+  const handleOpenPackage = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    try {
+      const value: unknown = JSON.parse(await file.text())
+      if (!isSavedRun(value)) {
+        throw new Error('This file is not a supported Y-maze run package.')
+      }
+      const savedRun = value
+      setScheduleData(savedRun.schedule)
+      setIsReviewed(savedRun.reviewed)
+      setAnimalText(savedRun.input_text)
+      setUseExampleData(savedRun.use_example)
+      setLearningDays(savedRun.schedule.settings.learning_days)
+      setReversalDays(savedRun.schedule.settings.reversal_days)
+      setTrialsPerDay(savedRun.schedule.settings.trials_per_day)
+      setBalanceBy(savedRun.schedule.settings.balance_by)
+      setMaxConsecutiveRepeats(savedRun.schedule.settings.max_consecutive_repeats)
+      setLockedExitArms(savedRun.schedule.locked_exit_arms)
+      setPresetName(savedRun.schedule.preset_name)
+      setUseSeed(savedRun.requested_seed !== null)
+      setSeed(savedRun.requested_seed ?? savedRun.schedule.seed)
+      setSelectedDay(0)
+      setError(null)
+      if (savedRun.reviewed) {
+        try {
+          localStorage.setItem(REVIEW_KEY, JSON.stringify(savedRun))
+        } catch {
+          setError('Run opened. The browser could not save a local copy.')
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not open this run package.')
+    }
+  }
+
   const currentTable = scheduleData?.day_tables?.[selectedDay]
   const hasSchedule = Boolean(scheduleData)
-  const statusLabel = loading ? 'Generating' : 'Ready'
-  const statusClass = loading ? 'warning' : 'success'
+  const statusLabel = loading ? 'Generating' : !hasSchedule ? 'Ready' : reviewIsCurrent ? 'Reviewed' : 'Needs review'
+  const statusClass = loading || (hasSchedule && !reviewIsCurrent) ? 'warning' : 'success'
   const tutorialSteps: TutorialStep[] = [
     {
       selector: '[data-testid="ymaze-use-example-toggle"]',
@@ -294,7 +592,7 @@ function App() {
     {
       selector: '[data-testid="ymaze-settings-section"]',
       title: 'Configure schedule settings',
-      description: 'Set learning/reversal days, trials per day, and optional random seed.',
+      description: 'Choose a named protocol, set days and trials, balance factors, repeat limits and locked exit arms.',
     },
     {
       selector: '[data-testid="ymaze-learning-days-input"]',
@@ -314,7 +612,7 @@ function App() {
     {
       selector: '[data-testid="ymaze-seed-toggle"]',
       title: 'Random seed option',
-      description: 'Enable and set a seed to reproduce identical randomization.',
+      description: 'Each schedule records a seed. Set one here to reproduce the same assignments and trial order.',
     },
     {
       selector: '[data-testid="generate-btn"]',
@@ -343,7 +641,7 @@ function App() {
             <p className="muted">Generate balanced, randomized Y‑maze schedules from pasted animal data.</p>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span className={`status-chip ${statusClass}`}>{statusLabel}</span>
+              <span className={`status-chip ${statusClass}`}>{statusLabel}</span>
             <span className="pill soft">
               <Calendar className="icon" aria-hidden="true" />
               {learningDays + reversalDays} days planned
@@ -429,6 +727,48 @@ function App() {
 
           <div className="sidebar-section" data-testid="ymaze-settings-section">
             <div className="section-title">Schedule Settings</div>
+            <label className="field">
+              <span className="eyebrow">Protocol preset</span>
+              <select
+                value={selectedPresetId || 'custom'}
+                onChange={(event) => {
+                  const nextId = event.target.value
+                  if (nextId === DEFAULT_PRESET.id) applyPreset(DEFAULT_PRESET)
+                  else if (nextId === 'custom') {
+                    setSelectedPresetId('')
+                    setPresetName('Custom protocol')
+                  } else {
+                    const preset = customPresets.find((item) => item.id === nextId)
+                    if (preset) applyPreset(preset)
+                  }
+                }}
+                data-testid="ymaze-preset-select"
+              >
+                <option value={DEFAULT_PRESET.id}>{DEFAULT_PRESET.name}</option>
+                {customPresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+                <option value="custom">Custom settings</option>
+              </select>
+            </label>
+            <p className="muted tiny">
+              {!selectedPresetId
+                ? 'Custom protocol settings.'
+                : settingsMatchSelectedPreset
+                  ? `Using ${selectedPreset?.name}.`
+                  : `Settings differ from ${selectedPreset?.name ?? 'the selected preset'}.`}
+            </p>
+            <button
+              onClick={() => {
+                applyPreset(DEFAULT_PRESET)
+                setLockedExitArms({})
+                setUseSeed(false)
+                setSeed(42)
+              }}
+              className="ghost"
+              type="button"
+              data-testid="ymaze-reset-settings-btn"
+            >
+              Reset settings and locks
+            </button>
             <div className="template-row">
               <label className="field">
                 <span className="eyebrow">Learning Days</span>
@@ -462,7 +802,38 @@ function App() {
                   data-testid="ymaze-trials-input"
                 />
               </label>
+              <label className="field">
+                <span className="eyebrow">Maximum repeats</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="8"
+                  value={maxConsecutiveRepeats}
+                  onChange={(e) => setMaxConsecutiveRepeats(parseInt(e.target.value) || 1)}
+                  data-testid="ymaze-max-repeats-input"
+                />
+              </label>
             </div>
+
+            <fieldset className="sidebar-section" style={{ border: 0, padding: 0, margin: 0 }}>
+              <legend className="section-title">Balance arms within</legend>
+              <div className="chip-row">
+                {(['Genotype', 'Sex', 'Cage'] as BalanceField[]).map((field) => (
+                  <label className="pill soft" key={field}>
+                    <input
+                      type="checkbox"
+                      checked={balanceBy.includes(field)}
+                      onChange={(event) => setBalanceBy((current) => event.target.checked
+                        ? [...current, field]
+                        : current.filter((item) => item !== field))}
+                      data-testid={`ymaze-balance-${field.toLowerCase()}`}
+                    />
+                    <span>{field}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="muted tiny">Arm totals stay as even as locks allow. These fields define subgroups within which assignments are spread.</p>
+            </fieldset>
 
             <div className="field-row">
               <label className="pill soft">
@@ -472,7 +843,7 @@ function App() {
                   onChange={(e) => setUseSeed(e.target.checked)}
                   data-testid="ymaze-seed-toggle"
                 />
-                <span>Use Random Seed</span>
+                <span>Set a fixed seed</span>
               </label>
               {useSeed && (
                 <label className="field">
@@ -485,6 +856,49 @@ function App() {
                   />
                 </label>
               )}
+            </div>
+            <p className="muted tiny">Every generated schedule records its seed. Leave this off to generate one automatically.</p>
+
+            {parsedInput.animals.length > 0 && (
+              <div className="sidebar-section">
+                <div className="section-title">Lock learning exit arms</div>
+                <p className="muted tiny">Choose an arm for animals that must keep that assignment. Others are balanced automatically.</p>
+                <div className="lock-list">
+                  {parsedInput.animals.map((animal) => (
+                    <label className="field-row" key={animal.AnimalID}>
+                      <span className="mono">{animal.AnimalID}</span>
+                      <select
+                        aria-label={`Lock exit arm for ${animal.AnimalID}`}
+                        value={lockedExitArms[animal.AnimalID] ?? ''}
+                        onChange={(event) => setLockedExitArms((current) => {
+                          const next = { ...current }
+                          if (event.target.value) next[animal.AnimalID] = Number(event.target.value)
+                          else delete next[animal.AnimalID]
+                          return next
+                        })}
+                      >
+                        <option value="">Automatic</option>
+                        <option value="1">Arm 1</option>
+                        <option value="2">Arm 2</option>
+                        <option value="3">Arm 3</option>
+                      </select>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="field-row preset-save-row">
+              <label className="field">
+                <span className="eyebrow">Preset name</span>
+                <input
+                  value={presetToSave}
+                  onChange={(event) => setPresetToSave(event.target.value)}
+                  placeholder="e.g. 8-trial pilot"
+                  data-testid="ymaze-preset-name-input"
+                />
+              </label>
+              <button onClick={handleSavePreset} className="ghost" type="button" data-testid="ymaze-save-preset-btn">Save preset</button>
             </div>
           </div>
 
@@ -510,23 +924,52 @@ function App() {
                   Copy Output
                 </button>
               )}
+              {hasSchedule && (
+                <>
+                  <button
+                    onClick={handleReviewAndLock}
+                    disabled={!runMatchesCurrentInputs || reviewIsCurrent}
+                    className="accent"
+                    type="button"
+                    data-testid="ymaze-review-lock-btn"
+                  >
+                    {reviewIsCurrent ? 'Reviewed and locked' : 'Review and lock schedule'}
+                  </button>
+                  {!runMatchesCurrentInputs && (
+                    <p className="muted tiny" role="status">Inputs changed. Generate again to review these settings.</p>
+                  )}
+                  <button onClick={handleDownloadPackage} disabled={!reviewIsCurrent} className="ghost" type="button" data-testid="ymaze-download-package-btn">
+                    <Download className="icon" aria-hidden="true" />
+                    Save run package
+                  </button>
+                </>
+              )}
+              <label className="ghost package-open">
+                Open saved run
+                <input type="file" accept=".json,.easylab-ymaze.json,application/json" onChange={handleOpenPackage} aria-label="Open saved Y-maze run package" />
+              </label>
             </div>
 
             {hasSchedule && (
               <div className="template-row">
-                <button onClick={handleExportCSVs} className="ghost" type="button">
+                <button onClick={handleExportCSVs} disabled={!reviewIsCurrent} className="ghost" type="button">
                   <Shuffle className="icon" aria-hidden="true" />
                   CSV/Day
                 </button>
-                <button onClick={handleExportCombinedCSV} className="ghost" type="button">
+                <button onClick={handleExportCombinedCSV} disabled={!reviewIsCurrent} className="ghost" type="button">
                   <Shuffle className="icon" aria-hidden="true" />
                   CSV Combined
                 </button>
-                <button onClick={handleExportExcel} className="ghost" type="button" data-testid="ymaze-export-excel-btn">
+                <button onClick={handleExportExcel} disabled={!reviewIsCurrent} className="ghost" type="button" data-testid="ymaze-export-excel-btn">
                   <Download className="icon" aria-hidden="true" />
                   Excel
                 </button>
               </div>
+            )}
+            {reviewIsCurrent && csvHasFormulaLikeText && (
+              <p className="muted tiny" role="note">
+                CSV keeps the exact values. In Excel or another spreadsheet, import columns as text if a value starts with =, +, - or @.
+              </p>
             )}
           </div>
 
@@ -560,6 +1003,10 @@ function App() {
               <div className="chip-row">
                 <span className="pill soft">{scheduleData.day_tables.length} days</span>
                 <span className="pill">{Object.keys(scheduleData.exit_arm_map).length} animals</span>
+                <span className="pill soft" data-testid="ymaze-schedule-seed">Seed {scheduleData.seed}</span>
+                <span className={`status-chip ${reviewIsCurrent ? 'success' : 'warning'}`}>
+                  {reviewIsCurrent ? 'Reviewed and locked' : 'Review required'}
+                </span>
               </div>
             )}
           </div>
@@ -573,20 +1020,26 @@ function App() {
 
             {hasSchedule && scheduleData && (
               <>
+                {!runMatchesCurrentInputs && (
+                  <div className="review-notice" role="status">
+                    <strong>This schedule uses earlier inputs.</strong> Generate again to apply current changes. Exports are disabled until you review the current schedule.
+                  </div>
+                )}
                 <div className="today-card">
                   <div className="today-head">
                     <div>
                       <h2>Exit Arm Assignments</h2>
-                      <p className="muted tiny">Stable arm mapping for the entire experiment.</p>
+                      <p className="muted tiny">The learning exit arm stays fixed for each animal. Locked assignments are shown in the table.</p>
                     </div>
                     <span className="pill soft">{Object.keys(scheduleData.exit_arm_map).length} animals</span>
                   </div>
                   <div className="table-wrap">
-                    <table>
+                    <table data-testid="ymaze-assignment-table">
                       <thead>
                         <tr>
                           <th>Animal ID</th>
                           <th>Exit Arm</th>
+                          <th>Assignment</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -594,11 +1047,52 @@ function App() {
                           <tr key={id}>
                             <td><code>{id}</code></td>
                             <td>Arm {arm}</td>
+                            <td>{scheduleData.locked_exit_arms[id] === arm ? 'Locked' : 'Automatic'}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
+                  <div className="arm-counts" aria-label="Learning exit arm counts">
+                    {[1, 2, 3].map((arm) => (
+                      <div className="template-card active" key={arm}>
+                        <p className="eyebrow">Arm {arm}</p>
+                        <p className="muted">{totalArmCounts[arm]} animals</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="muted tiny">
+                    Assignments are spread across {scheduleData.settings.balance_by.length
+                      ? scheduleData.settings.balance_by.join(', ').toLowerCase()
+                      : 'the full cohort'} subgroups. Locks can prevent equal totals.
+                  </p>
+                  {allocationGroups.length > 1 && (
+                    <details className="balance-detail">
+                      <summary>Arm counts by subgroup</summary>
+                      <div className="table-wrap">
+                        <table>
+                          <thead><tr><th>Subgroup</th><th>Animals</th><th>Arm 1</th><th>Arm 2</th><th>Arm 3</th></tr></thead>
+                          <tbody>
+                            {allocationGroups.map((group) => (
+                              <tr key={group.label}>
+                                <td>{group.label}</td><td>{group.count}</td>
+                                <td>{group.arms[1]}</td><td>{group.arms[2]}</td><td>{group.arms[3]}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </details>
+                  )}
+                </div>
+
+                <div className="today-card protocol-note">
+                  <h2>Protocol used</h2>
+                  <p className="muted">{scheduleData.preset_name} · seed {scheduleData.seed} · maximum {scheduleData.settings.max_consecutive_repeats} consecutive starts on the same arm.</p>
+                  <p className="muted">During learning, each animal’s first trial avoids its assigned exit arm. During reversal, each animal’s daily exit arm is one of the other two arms, and its first trial avoids the original learning exit arm.</p>
+                  {Object.keys(scheduleData.locked_exit_arms).length > 0 && (
+                    <p className="muted">{Object.keys(scheduleData.locked_exit_arms).length} learning exit assignment(s) were locked before generation.</p>
+                  )}
                 </div>
 
                 <div className="today-card">
@@ -607,7 +1101,7 @@ function App() {
                       <h2>Days</h2>
                       <p className="muted tiny">Select a day to view the schedule table.</p>
                     </div>
-                    <span className="pill soft">Trials/day: {trialsPerDay}</span>
+                    <span className="pill soft">Trials/day: {scheduleData.settings.trials_per_day}</span>
                   </div>
                   <div className="editor-tabs">
                     {scheduleData.day_tables.map((table, idx) => (
@@ -633,7 +1127,7 @@ function App() {
                       <span className="pill soft">Trials: {currentTable.header.length - 6}</span>
                     </div>
                     <div className="table-wrap">
-                      <table>
+                      <table data-testid="ymaze-day-table">
                         <thead>
                           <tr>
                             {currentTable.header.map((col, idx) => (

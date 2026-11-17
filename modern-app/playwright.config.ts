@@ -10,7 +10,7 @@ export default defineConfig({
     toHaveScreenshot: { animations: 'disabled', caret: 'hide' }
   },
   use: {
-    baseURL: 'http://localhost:5175',
+    baseURL: 'http://127.0.0.1:19523',
     trace: 'on-first-retry',
     viewport: { width: 1440, height: 900 },
     colorScheme: 'light',
@@ -19,8 +19,8 @@ export default defineConfig({
   },
   webServer: {
     command: "bash -lc 'set -e; trap \"kill 0\" EXIT; npm run dev:back & npm run dev:front'",
-    url: 'http://localhost:5175',
-    reuseExistingServer: true,
+    url: 'http://127.0.0.1:19523',
+    reuseExistingServer: false,
     timeout: 120_000,
     stdout: 'ignore'
   },

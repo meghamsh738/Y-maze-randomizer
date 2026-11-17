@@ -5,15 +5,17 @@ Modern React + FastAPI app with lab notebook neo-brutalist styling under `modern
 Part of **Easylab Suite**: when bundled, it launches from the suite desktop launcher as the **Y-Maze Randomizer** module.
 
 ## Features (shared logic)
-- Balanced exit-arm assignment within genotype, sex, and cage groups, while keeping global counts for arms 1–3 as even as possible.
-- Dynamic programming to build trial schedules that avoid the learning-day exit arm for each animal and minimize arm switching.
-- Paste or type animal data directly; parser expects rows of `AnimalID Tag Sex Genotype Cage`.
-- Export schedules as CSV (per-day or combined) or Excel with one sheet per day.
+- Uses the named **Standard learning and reversal** protocol with editable local copies. Balance groups can use genotype, sex and cage; locked learning exit arms are retained.
+- Records an explicit seed for every schedule, including automatic seeds. Set the maximum permitted consecutive starts on the same arm.
+- Reviews learning exit-arm totals, subgroup counts and each day's schedule before locking the run for export.
+- Saves the exact reviewed schedule, animal input, protocol, seed and locks in local storage and a portable JSON package.
+- Exports the reviewed day tables to per-day CSV, combined CSV or an Excel workbook with protocol settings. Excel exports the displayed schedule without generating it again.
+- Paste or type animal data directly; input rows use `AnimalID Tag Sex Genotype Cage`.
 
 ## Modern web app (preferred)
 - See `modern-app/README.md` for setup and dev commands.
 - Example run (Playwright E2E with bundled data — refreshed Dec 28, 2025): ![Y-maze scheduler app screenshot](modern-app/screenshots/example_run.png)
-- Latest verification: `npm run test:e2e` (starts Vite front-end on :5175 and FastAPI back-end on :8000, drives the example flow, regenerates the screenshot above).
+- EasyLab Next uses strict local API port 18523 and browser preview port 19523. The standalone preview requires the dedicated Next Python environment and runtime paths described in `modern-app/README.md`.
 
 ## Legacy Tkinter GUI (archived)
 - Requirements: Python 3 with Tkinter (bundled in most installs); `openpyxl` for Excel export (`pip install openpyxl`).
