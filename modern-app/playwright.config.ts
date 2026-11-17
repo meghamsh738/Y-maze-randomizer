@@ -17,13 +17,20 @@ export default defineConfig({
     reducedMotion: 'reduce',
     video: 'retain-on-failure'
   },
-  webServer: {
-    command: "bash -lc 'set -e; trap \"kill 0\" EXIT; npm run dev:back & npm run dev:front'",
-    url: 'http://127.0.0.1:19523',
-    reuseExistingServer: false,
-    timeout: 120_000,
-    stdout: 'ignore'
-  },
+  webServer: [
+    {
+      command: 'npm run dev:back',
+      url: 'http://127.0.0.1:18523/health',
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+    {
+      command: 'npm run dev:front',
+      url: 'http://127.0.0.1:19523',
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+  ],
   projects: [
     {
       name: 'chromium',
